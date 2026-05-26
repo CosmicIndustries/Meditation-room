@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sacred Chamber — Crystal Pillar Meditation</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cinzel+Decorative&display=swap');
+* { margin:0; padding:0; box-sizing:border-box; }
+body { overflow:hidden; background:#000; font-family:'Cinzel',Georgia,serif; }
+
+#hud {
+  position:fixed; top:0; left:0; right:0;
+  padding:22px 16px 0; text-align:center;
+  pointer-events:none; z-index:10;
+}
+#hTitle {
+  font-family:'Cinzel Decorative',serif;
+  font-size:clamp(11px,1.8vw,22px); letter-spacing:4px;
+  color:#fff; text-transform:uppercase;
+  text-shadow:0 0 50px currentColor, 0 0 20px currentColor;
+  transition:color .9s ease; will-change:color;
+}
+#hSub {
+  font-size:clamp(8px,1.1vw,11px);
+  color:rgba(255,255,255,.45); margin-top:7px;
+  letter-spacing:2.5px; transition:color .9s ease;
+}
+#hHint { font-size:9px; color:rgba(255,255,255,.18); margin-top:9px; letter-spacing:1.5px; }
+
+#btns {
+  position:fixed; bottom:24px; left:50%;
+  transform:translateX(-50%);
+  display:flex; gap:10px; z-index:10; align-items:center;
+}
+.cbtn {
+  width:42px; height:42px; border-radius:50%;
+  border:2px solid rgba(255,255,255,.18);
+  cursor:pointer; transition:all .35s;
+  position:relative; flex-shrink:0;
+}
+.cbtn:hover { transform:scale(1.14); border-color:rgba(255,255,255,.55); }
+.cbtn.on { border-color:#fff; }
+.cbtn.on::after {
+  content:''; position:absolute; inset:-6px; border-radius:50%;
+  border:1.5px solid currentColor;
+  animation:rpulse 2s ease-out infinite;
+}
+@keyframes rpulse { 0%{opacity:.7;transform:scale(1)} 100%{opacity:0;transform:scale(1.7)} }
+
+#sndBtn {
+  position:fixed; top:18px; right:18px; z-index:10;
+  width:34px; height:34px; border-radius:50%;
+  background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.22);
+  color:rgba(255,255,255,.45); font-size:15px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .3s; font-family:'Cinzel',serif; letter-spacing:0;
+}
+#sndBtn:hover,#sndBtn.on { border-color:rgba(255,255,255,.6); color:#fff; }
+
+#tip {
+  position:fixed; pointer-events:none;
+  background:rgba(0,0,0,.8); padding:5px 12px;
+  border-radius:3px; font-size:10px; letter-spacing:2px;
+  border:1px solid rgba(255,255,255,.15);
+  display:none; z-index:20; white-space:nowrap;
+  font-family:'Cinzel',serif; text-transform:uppercase;
+}
+
+#loading {
+  position:fixed; inset:0; background:#000; z-index:100;
+  display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:14px;
+  font-family:'Cinzel Decorative',serif; color:rgba(255,255,255,.4);
+  font-size:13px; letter-spacing:4px; text-transform:uppercase;
+  transition:opacity 1s;
+}
+#loading.out { opacity:0; pointer-events:none; }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div>⬡</div>
+  <div>Summoning the Chamber</div>
+</div>
+
+<div id="hud">
+  <div id="hTitle">Sacred Chamber</div>
+  <div id="hSub">Select a crystal pillar to begin meditation</div>
+  <div id="hHint">Click Pillar · Drag to Orbit · Scroll to Zoom</div>
+</div>
+<div id="btns"></div>
+<div id="sndBtn" title="Binaural tones – use headphones">♪</div>
+<div id="tip"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+// CHAKRA DATA — ROYGBIV mapped to 7 solfeggio frequencies
+// ═══════════════════════════════════════════════════════════════
+const CK = [
+  { name:'Root',         sk:'Muladhara',    hex:0xFF1111, css:'#FF1111', freq:396, mantra:'LAM', el:'Earth'         },
+  { name:'Sacral',       sk:'Svadhisthana', hex:0xFF7700, css:'#FF7700', freq:417, mantra:'VAM', el:'Water'         },
+  { name:'Solar Plexus', sk:'Manipura',     hex:0xFFEE00, css:'#FFEE00', freq:528, mantra:'RAM', el:'Fire'          },
+  { name:'Heart',        sk:'Anahata',      hex:0x00CC44, css:'#00CC44', freq:639, mantra:'YAM', el:'Air'           },
+  { name:'Throat',       sk:'Vishuddha',    hex:0x0088FF, css:'#0088FF', freq:741, mantra:'HAM', el:'Sound'         },
+  { name:'Third Eye',    sk:'Ajna',         hex:0x3311DD, css:'#3311DD', freq:852, mantra:'AUM', el:'Light'         },
+  { name:'Crown',        sk:'Sahasrara',    hex:0xAA00FF, css:'#AA00FF', freq:963, mantra:'OM',  el:'Consciousness' },
+];
+const N = 7, OR = 16; // pillar count, outer ring radius
+
+// ═══════════════════════════════════════════════════════════════
+// RENDERER
+// ═══════════════════════════════════════════════════════════════
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference:'high-performance' });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.88;
+document.body.appendChild(renderer.domElement);
+
+// ═══════════════════════════════════════════════════════════════
+// SCENE
+// ═══════════════════════════════════════════════════════════════
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000408);
+scene.fog = new THREE.FogExp2(0x000408, 0.014);
+
+// ═══════════════════════════════════════════════════════════════
+// CAMERA + ORBIT
+// ═══════════════════════════════════════════════════════════════
+const cam = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 250);
+const CT = new THREE.Vector3(0, 6, 0);
+let cTh = Math.PI, cPh = 0.36, cR = 26;
+
+function reposCam() {
+  cam.position.set(
+    CT.x + cR * Math.sin(cPh) * Math.sin(cTh),
+    CT.y + cR * Math.cos(cPh),
+    CT.z + cR * Math.sin(cPh) * Math.cos(cTh)
+  );
+  cam.lookAt(CT);
+}
+reposCam();
+
+let isDrag = false, mDown = [0,0], mPrev = [0,0];
+renderer.domElement.addEventListener('mousedown', e => {
+  isDrag = true; mPrev = mDown = [e.clientX, e.clientY];
+});
+renderer.domElement.addEventListener('mousemove', e => {
+  if (!isDrag) return;
+  cTh -= (e.clientX - mPrev[0]) * 0.004;
+  cPh = Math.max(0.07, Math.min(Math.PI * 0.47, cPh + (e.clientY - mPrev[1]) * 0.004));
+  mPrev = [e.clientX, e.clientY]; reposCam();
+});
+renderer.domElement.addEventListener('mouseup', () => isDrag = false);
+renderer.domElement.addEventListener('wheel', e => {
+  cR = Math.max(5, Math.min(48, cR + e.deltaY * 0.05)); reposCam();
+}, { passive: true });
+let tPrev = null;
+renderer.domElement.addEventListener('touchstart', e => {
+  tPrev = e.touches[0]; mDown = [e.touches[0].clientX, e.touches[0].clientY]; isDrag = true;
+}, { passive: true });
+renderer.domElement.addEventListener('touchmove', e => {
+  const t = e.touches[0];
+  cTh -= (t.clientX - tPrev.clientX) * 0.004;
+  cPh = Math.max(0.07, Math.min(Math.PI * 0.47, cPh + (t.clientY - tPrev.clientY) * 0.004));
+  tPrev = t; reposCam();
+}, { passive: true });
+renderer.domElement.addEventListener('touchend', () => isDrag = false);
+
+// ═══════════════════════════════════════════════════════════════
+// AUDIO — Solfeggio + harmonics + binaural beat
+// ═══════════════════════════════════════════════════════════════
+let actx = null, aNodes = [], sndOn = false;
+const initAudio = () => { if (!actx) actx = new (AudioContext || webkitAudioContext)(); };
+const stopSnd = () => {
+  const t = actx ? actx.currentTime : 0;
+  aNodes.forEach(({ o, g }) => {
+    try { g.gain.linearRampToValueAtTime(0, t + 1); } catch(e) {}
+    setTimeout(() => { try { o.stop(); } catch(e) {} }, 1100);
+  });
+  aNodes = [];
+};
+const playSnd = freq => {
+  if (!actx || !sndOn) return;
+  stopSnd();
+  const t = actx.currentTime;
+  // Harmonics: sub, fundamental, octave, 5th
+  [[freq * 0.25, 0.045, 'sawtooth'], [freq * 0.5, 0.035, 'sawtooth'],
+   [freq, 0.05, 'sine'], [freq * 2, 0.02, 'sine'], [freq * 1.5, 0.01, 'sine']
+  ].forEach(([f, a, type]) => {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(a, t + 2);
+    o.connect(g); g.connect(actx.destination); o.start();
+    aNodes.push({ o, g });
+  });
+  // Binaural theta beat (7 Hz offset, stereo)
+  if (actx.createStereoPanner) {
+    [[0, -1], [7, 1]].forEach(([off, pan]) => {
+      const o = actx.createOscillator(), g = actx.createGain(), p = actx.createStereoPanner();
+      o.frequency.value = freq + off; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.03, t + 2);
+      p.pan.value = pan; o.connect(g); g.connect(p); p.connect(actx.destination); o.start();
+      aNodes.push({ o, g });
+    });
+  }
+};
+document.getElementById('sndBtn').addEventListener('click', () => {
+  initAudio(); sndOn = !sndOn;
+  const btn = document.getElementById('sndBtn');
+  btn.textContent = sndOn ? '♪' : '♩'; btn.classList.toggle('on', sndOn);
+  if (!sndOn) stopSnd(); else if (activeIdx >= 0) playSnd(CK[activeIdx].freq);
+  if (actx && actx.state === 'suspended') actx.resume();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// HELPER
+// ═══════════════════════════════════════════════════════════════
+function addM(geo, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, y, z); parent.add(m); return m;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LIGHTING
+// ═══════════════════════════════════════════════════════════════
+scene.add(new THREE.AmbientLight(0x111122, 0.65));
+scene.add(new THREE.HemisphereLight(0x112233, 0x221100, 0.28));
+
+// ═══════════════════════════════════════════════════════════════
+// CAVE — inverted dome + stone floor
+// ═══════════════════════════════════════════════════════════════
+{
+  const m = new THREE.Mesh(
+    new THREE.SphereGeometry(50, 32, 22, 0, Math.PI * 2, 0, Math.PI * 0.65),
+    new THREE.MeshStandardMaterial({ color: 0x0b0a0e, roughness: 1, side: THREE.BackSide })
+  );
+  m.position.y = 3; scene.add(m);
+}
+{
+  const m = new THREE.Mesh(
+    new THREE.CircleGeometry(46, 80),
+    new THREE.MeshStandardMaterial({ color: 0x141210, roughness: 0.97 })
+  );
+  m.rotation.x = -Math.PI / 2; scene.add(m);
+}
+// Stone platform ring under outer pillars
+{
+  const m = new THREE.Mesh(
+    new THREE.RingGeometry(14.5, 18.5, 56),
+    new THREE.MeshStandardMaterial({ color: 0x181410, roughness: 0.93 })
+  );
+  m.rotation.x = -Math.PI / 2; m.position.y = 0.01; scene.add(m);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HEALING WATER — animated wave ring shader
+// ═══════════════════════════════════════════════════════════════
+const wUni = {
+  uTime:  { value: 0 },
+  uColor: { value: new THREE.Color(0x001422) },
+};
+const waterM = new THREE.Mesh(
+  new THREE.RingGeometry(3.1, 14.2, 96, 7),
+  new THREE.ShaderMaterial({
+    uniforms: wUni,
+    vertexShader: `
+      uniform float uTime;
+      varying vec2 vXY;
+      varying float vH;
+      void main(){
+        vXY = position.xy;
+        float r = length(position.xy);
+        float h = sin(r*1.6 - uTime*1.5)*0.13
+                + sin(r*3.2 - uTime*0.95)*0.055
+                + sin(r*0.8 + uTime*0.4)*0.04;
+        vH = h;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position.xy, h, 1.0);
+      }`,
+    fragmentShader: `
+      uniform vec3 uColor;
+      varying vec2 vXY;
+      varying float vH;
+      void main(){
+        float r = length(vXY);
+        float s = clamp((vH + 0.22) * 2.8, 0.0, 1.0);
+        vec3 base = uColor * 0.5;
+        vec3 crest = uColor * 1.4 + vec3(0.04, 0.06, 0.08);
+        vec3 c = mix(base, crest, s);
+        // Specular glint
+        c += pow(s, 4.0) * 0.18;
+        float inner = smoothstep(3.1, 4.0, r);
+        float outer = 1.0 - smoothstep(13.4, 14.2, r);
+        gl_FragColor = vec4(c, 0.82 * inner * outer);
+      }`,
+    transparent: true, side: THREE.DoubleSide, depthWrite: false,
+  })
+);
+waterM.rotation.x = -Math.PI / 2; waterM.position.y = 0.08;
+scene.add(waterM);
+
+// ═══════════════════════════════════════════════════════════════
+// WATER REFLECTION GLOW — soft coloured light on water surface
+// ═══════════════════════════════════════════════════════════════
+const waterGlowLight = new THREE.PointLight(0x001833, 0.8, 20);
+waterGlowLight.position.set(0, 0.5, 0);
+scene.add(waterGlowLight);
+
+// ═══════════════════════════════════════════════════════════════
+// CENTRAL PILLAR + ZAFU + ZABUTON + MEDITATING FIGURE
+// ═══════════════════════════════════════════════════════════════
+const cGrp = new THREE.Group(); scene.add(cGrp);
+
+const stM  = new THREE.MeshStandardMaterial({ color: 0x201c18, roughness: 0.88, metalness: 0.05 });
+const cPilMat = new THREE.MeshStandardMaterial({
+  color: 0x2e2820, roughness: 0.82,
+  emissive: new THREE.Color(0, 0, 0), emissiveIntensity: 0
+});
+const skinMat = new THREE.MeshStandardMaterial({ color: 0xb87840, roughness: 0.75 });
+
+// Platform base
+addM(new THREE.CylinderGeometry(3.2, 3.8, 0.55, 28), stM, 0, 0.28, 0, cGrp);
+// Inner platform ring detail
+addM(new THREE.TorusGeometry(3.0, 0.1, 8, 64), new THREE.MeshStandardMaterial({ color: 0x3a3428, roughness: 0.7, metalness: 0.2 }), 0, 0.52, 0, cGrp);
+// Column
+addM(new THREE.CylinderGeometry(1.55, 1.95, 6.4, 22), cPilMat, 0, 3.75, 0, cGrp);
+// Column detail bands
+[2.0, 4.5].forEach(y => addM(new THREE.TorusGeometry(1.75, 0.08, 8, 40), new THREE.MeshStandardMaterial({ color: 0x3a3428, roughness: 0.7, metalness: 0.3 }), 0, y, 0, cGrp));
+// Capital
+addM(new THREE.BoxGeometry(4.1, 0.5, 4.1), stM, 0, 7.1, 0, cGrp);
+addM(new THREE.BoxGeometry(3.5, 0.2, 3.5), new THREE.MeshStandardMaterial({ color: 0x2e2820, roughness: 0.9 }), 0, 7.42, 0, cGrp);
+
+// Zabuton (flat meditation mat) — slightly larger square cushion
+const zabutonM = addM(
+  new THREE.BoxGeometry(2.4, 0.14, 2.4),
+  new THREE.MeshStandardMaterial({ color: 0x1a224a, roughness: 0.85 }),
+  0, 7.6, 0, cGrp
+);
+
+// Zafu (round cushion) — torus laid flat
+const zafuM = new THREE.Mesh(
+  new THREE.TorusGeometry(0.82, 0.3, 18, 44),
+  new THREE.MeshStandardMaterial({ color: 0x1e2e70, roughness: 0.78 })
+);
+zafuM.rotation.x = Math.PI / 2; zafuM.position.set(0, 7.82, 0); cGrp.add(zafuM);
+
+// Zafu top dome (fills the donut center visually)
+addM(new THREE.CylinderGeometry(0.52, 0.52, 0.1, 24), new THREE.MeshStandardMaterial({ color: 0x1e2e70, roughness: 0.78 }), 0, 7.86, 0, cGrp);
+
+// Meditating figure
+const body = addM(new THREE.SphereGeometry(0.36, 14, 12), skinMat, 0, 8.32, 0, cGrp);
+body.scale.set(1, 1.52, 1);
+addM(new THREE.SphereGeometry(0.19, 12, 10), skinMat, 0, 8.98, 0, cGrp); // head
+// Arms resting on knees
+[-1, 1].forEach(s => {
+  const arm = addM(new THREE.SphereGeometry(0.13, 8, 6), skinMat, s * 0.41, 8.2, 0.1, cGrp);
+  arm.scale.set(1.8, 0.5, 1.2); arm.rotation.z = s * 0.52;
+  // Hand gyan mudra (small sphere at knee)
+  addM(new THREE.SphereGeometry(0.07, 6, 5), skinMat, s * 0.65, 8.1, 0.22, cGrp);
+});
+
+// Aura glow ring around central column
+const auRingMat = new THREE.MeshBasicMaterial({
+  color: 0xffffff, transparent: true, opacity: 0,
+  blending: THREE.AdditiveBlending, depthWrite: false
+});
+const auRing = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.07, 14, 96), auRingMat);
+auRing.position.y = 7.3; cGrp.add(auRing);
+
+// Second wider ring
+const auRingMat2 = new THREE.MeshBasicMaterial({
+  color: 0xffffff, transparent: true, opacity: 0,
+  blending: THREE.AdditiveBlending, depthWrite: false
+});
+const auRing2 = new THREE.Mesh(new THREE.TorusGeometry(3.5, 0.04, 8, 96), auRingMat2);
+auRing2.position.y = 0.65; cGrp.add(auRing2);
+
+// Central chakra activation light
+const cLight = new THREE.PointLight(0xffffff, 0, 20);
+cLight.position.set(0, 8.5, 0);
+scene.add(cLight);
+
+// ═══════════════════════════════════════════════════════════════
+// OUTER PILLARS — 7 crystal pillars with torches, god rays
+// ═══════════════════════════════════════════════════════════════
+const pGrps  = [];
+const cMesh  = []; // crystal meshes
+const rMesh  = []; // god ray cones
+const tLts   = []; // torch point lights
+const aLts   = []; // activation lights (world space)
+const fMesh  = []; // flame outer spheres
+const fCore  = []; // flame core spheres
+
+CK.forEach((ck, i) => {
+  const ang = (i / N) * Math.PI * 2;
+  const wx  = Math.sin(ang) * OR;
+  const wz  = Math.cos(ang) * OR;
+  const col = new THREE.Color(ck.hex);
+
+  const grp = new THREE.Group();
+  grp.position.set(wx, 0, wz);
+  grp.userData.idx = i;
+  scene.add(grp); pGrps.push(grp);
+
+  const sM = new THREE.MeshStandardMaterial({ color: 0x1e1a15, roughness: 0.91 });
+
+  // --- PILLAR STRUCTURE ---
+  // Base slab
+  addM(new THREE.CylinderGeometry(2.5, 3.0, 0.7, 20), sM, 0, 0.35, 0, grp);
+  addM(new THREE.TorusGeometry(2.6, 0.1, 8, 52), new THREE.MeshStandardMaterial({ color: 0x2e2820, roughness: 0.75, metalness: 0.25 }), 0, 0.66, 0, grp);
+
+  // Column shaft
+  addM(new THREE.CylinderGeometry(1.1, 1.45, 13.0, 18), sM, 0, 7.2, 0, grp);
+  // Column bands
+  [3.5, 8.5, 11.5].forEach(y => addM(new THREE.TorusGeometry(1.22, 0.09, 8, 40), new THREE.MeshStandardMaterial({ color: 0x2e2820, roughness: 0.7, metalness: 0.2 }), 0, y, 0, grp));
+
+  // Capital
+  addM(new THREE.BoxGeometry(3.5, 0.55, 3.5), sM, 0, 13.83, 0, grp);
+  addM(new THREE.BoxGeometry(2.9, 0.22, 2.9), new THREE.MeshStandardMaterial({ color: 0x2e2820, roughness: 0.88 }), 0, 14.13, 0, grp);
+
+  // Crystal mount — ornate ring
+  const mnt = new THREE.Mesh(
+    new THREE.TorusGeometry(0.62, 0.11, 10, 32),
+    new THREE.MeshStandardMaterial({ color: 0x403020, metalness: 0.55, roughness: 0.55 })
+  );
+  mnt.rotation.x = Math.PI / 2; mnt.position.set(0, 14.35, 0); grp.add(mnt);
+  // Mount pedestal
+  addM(new THREE.CylinderGeometry(0.38, 0.48, 0.3, 12), new THREE.MeshStandardMaterial({ color: 0x3a3020, metalness: 0.5, roughness: 0.6 }), 0, 14.1, 0, grp);
+
+  // --- CRYSTAL LENS ---
+  const crystalMat = new THREE.MeshStandardMaterial({
+    color: col, emissive: col, emissiveIntensity: 1.15,
+    roughness: 0.0, metalness: 0.15,
+    transparent: true, opacity: 0.90,
+  });
+  const cry = addM(new THREE.OctahedronGeometry(0.78, 2), crystalMat, 0, 14.72, 0, grp);
+  cry.scale.y = 1.6; cMesh.push(cry);
+
+  // Crystal inner glow mesh
+  const innerCry = addM(
+    new THREE.OctahedronGeometry(0.42, 1),
+    new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }),
+    0, 14.72, 0, grp
+  );
+  innerCry.scale.y = 1.6;
+
+  // Crystal halo sphere
+  addM(
+    new THREE.SphereGeometry(1.2, 14, 10),
+    new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false }),
+    0, 14.72, 0, grp
+  );
+
+  // Dim ambient light from crystal (always on)
+  const dimPt = new THREE.PointLight(ck.hex, 0.4, 10);
+  dimPt.position.set(0, 14.72, 0); grp.add(dimPt);
+
+  // --- GOD RAY CONE ---
+  // Tip at crystal (y=14.72), base fans out to floor (y=0)
+  const rayH = 14.72;
+  const ray = addM(
+    new THREE.ConeGeometry(7.2, rayH, 28, 1, true),
+    new THREE.MeshBasicMaterial({
+      color: col, transparent: true, opacity: 0.048,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+    }),
+    0, rayH / 2, 0, grp   // center positioned so tip lands at rayH, base at 0
+  );
+  rMesh.push(ray);
+
+  // Secondary inner god ray (narrower, brighter center)
+  addM(
+    new THREE.ConeGeometry(2.5, rayH * 0.9, 16, 1, true),
+    new THREE.MeshBasicMaterial({
+      color: col, transparent: true, opacity: 0.035,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+    }),
+    0, rayH * 0.9 / 2, 0, grp
+  );
+
+  // --- WORLD-SPACE ACTIVATION LIGHT ---
+  const al = new THREE.PointLight(ck.hex, 0, 55);
+  al.position.set(wx, 14.72, wz); scene.add(al); aLts.push(al);
+
+  // --- TORCH (inner-facing, toward center) ---
+  const tx = -Math.sin(ang) * 1.5;
+  const tz = -Math.cos(ang) * 1.5;
+  const tMat = new THREE.MeshStandardMaterial({ color: 0x2a1a08, roughness: 0.9 });
+  const mMat = new THREE.MeshStandardMaterial({ color: 0x4a3010, metalness: 0.4, roughness: 0.7 });
+
+  // Torch arm/bracket
+  const armGeo = new THREE.BoxGeometry(0.1, 0.1, 1.0);
+  const armM = new THREE.Mesh(armGeo, tMat);
+  armM.position.set(tx * 0.5, 13.86, tz * 0.5); grp.add(armM);
+  armM.lookAt(new THREE.Vector3(tx + wx, 13.86, tz + wz));
+
+  // Torch body (vertical stick)
+  addM(new THREE.CylinderGeometry(0.06, 0.09, 0.72, 8), tMat, tx, 13.86, tz, grp);
+  // Bowl
+  addM(new THREE.CylinderGeometry(0.19, 0.13, 0.22, 10, 1, true), mMat, tx, 14.32, tz, grp);
+
+  // Flame outer glow
+  const fl = addM(
+    new THREE.SphereGeometry(0.23, 8, 7),
+    new THREE.MeshBasicMaterial({ color: 0xFF8820, transparent: true, opacity: 0.87, blending: THREE.AdditiveBlending, depthWrite: false }),
+    tx, 14.54, tz, grp
+  );
+  fMesh.push(fl);
+
+  // Flame inner bright core
+  const fc = addM(
+    new THREE.SphereGeometry(0.1, 8, 6),
+    new THREE.MeshBasicMaterial({ color: 0xFFFF99, transparent: true, opacity: 0.92, blending: THREE.AdditiveBlending, depthWrite: false }),
+    tx, 14.65, tz, grp
+  );
+  fCore.push(fc);
+
+  // Torch emissive column glow
+  addM(
+    new THREE.SphereGeometry(0.45, 8, 6),
+    new THREE.MeshBasicMaterial({ color: 0xFF6600, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false }),
+    tx, 14.55, tz, grp
+  );
+
+  // Torch point light
+  const tl = new THREE.PointLight(0xFF9933, 3.0, 14);
+  tl.position.set(tx, 14.65, tz); grp.add(tl); tLts.push(tl);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// STALACTITES — cave ceiling formations
+// ═══════════════════════════════════════════════════════════════
+{
+  const sm = new THREE.MeshStandardMaterial({ color: 0x0c0a08, roughness: 1 });
+  const rng = (a, b) => a + Math.random() * (b - a);
+  for (let i = 0; i < 38; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = rng(5, 34);
+    const h = rng(1.2, 9);
+    const rt = rng(0.1, 0.55);
+    const m = new THREE.Mesh(new THREE.ConeGeometry(rt, h, rng(5,9)|0), sm);
+    m.position.set(Math.sin(a) * r, 28 - h / 2, Math.cos(a) * r);
+    m.rotation.z = (Math.random() - 0.5) * 0.2;
+    scene.add(m);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DUST MOTES — floating particles
+// ═══════════════════════════════════════════════════════════════
+const DN = 800;
+const dP = new Float32Array(DN * 3);
+for (let i = 0; i < DN; i++) {
+  const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * 36;
+  dP[i*3]   = Math.sin(a) * r;
+  dP[i*3+1] = Math.random() * 26;
+  dP[i*3+2] = Math.cos(a) * r;
+}
+const dGeo = new THREE.BufferGeometry();
+const dAttr = new THREE.BufferAttribute(dP, 3);
+dGeo.setAttribute('position', dAttr);
+scene.add(new THREE.Points(dGeo, new THREE.PointsMaterial({
+  color: 0xDDCC99, size: 0.042, transparent: true, opacity: 0.2,
+  blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+})));
+
+// ═══════════════════════════════════════════════════════════════
+// UI — chakra selection buttons
+// ═══════════════════════════════════════════════════════════════
+const btnsDiv = document.getElementById('btns');
+CK.forEach((ck, i) => {
+  const btn = document.createElement('div');
+  btn.className = 'cbtn';
+  btn.style.background = ck.css;
+  btn.style.boxShadow = `0 0 14px ${ck.css}44`;
+  btn.style.color = ck.css;
+  btn.title = `${ck.name} · ${ck.freq} Hz`;
+  btn.addEventListener('click', () => activate(i));
+  btnsDiv.appendChild(btn);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// CHAKRA ACTIVATION
+// ═══════════════════════════════════════════════════════════════
+let activeIdx = -1;
+const titleEl = document.getElementById('hTitle');
+const subEl   = document.getElementById('hSub');
+
+// Precompute water target colors
+const wTgts = CK.map(ck => {
+  const c = new THREE.Color(ck.hex);
+  c.multiplyScalar(0.13); return c;
+});
+const wDef = new THREE.Color(0x001422);
+
+function activate(idx) {
+  if (activeIdx === idx) { deact(); return; }
+  activeIdx = idx;
+  const ck = CK[idx];
+  titleEl.textContent = `${ck.name.toUpperCase()} CHAKRA`;
+  titleEl.style.color = ck.css;
+  subEl.textContent   = `${ck.sk}  ·  ${ck.freq} Hz  ·  ${ck.el}  ·  ${ck.mantra}`;
+  subEl.style.color   = ck.css;
+  document.querySelectorAll('.cbtn').forEach((b, j) => b.classList.toggle('on', j === idx));
+  aLts.forEach((l, j) => l.intensity = j === idx ? 5.0 : 0);
+  auRingMat.color.set(ck.hex);
+  auRingMat2.color.set(ck.hex);
+  cLight.color.set(ck.hex);
+  waterGlowLight.color.set(ck.hex);
+  if (sndOn) { initAudio(); playSnd(ck.freq); }
+}
+
+function deact() {
+  activeIdx = -1;
+  titleEl.textContent = 'Sacred Chamber';
+  titleEl.style.color = '#fff';
+  subEl.textContent   = 'Select a crystal pillar to begin meditation';
+  subEl.style.color   = 'rgba(255,255,255,.45)';
+  document.querySelectorAll('.cbtn').forEach(b => b.classList.remove('on'));
+  aLts.forEach(l => l.intensity = 0);
+  cLight.intensity = 0;
+  waterGlowLight.intensity = 0.3;
+  if (sndOn) stopSnd();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RAYCASTING — click pillars to activate
+// ═══════════════════════════════════════════════════════════════
+const rc = new THREE.Raycaster();
+const mn = new THREE.Vector2();
+const rcT = [];
+pGrps.forEach(g => g.traverse(c => { if (c.isMesh) rcT.push(c); }));
+
+function findPillarGroup(obj) {
+  while (obj) {
+    if (pGrps.includes(obj)) return obj;
+    obj = obj.parent;
+  }
+  return null;
+}
+
+renderer.domElement.addEventListener('click', e => {
+  if (Math.abs(e.clientX - mDown[0]) > 7 || Math.abs(e.clientY - mDown[1]) > 7) return;
+  mn.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  rc.setFromCamera(mn, cam);
+  const hits = rc.intersectObjects(rcT);
+  if (!hits.length) return;
+  const grp = findPillarGroup(hits[0].object);
+  if (grp) activate(grp.userData.idx);
+});
+
+const tip = document.getElementById('tip');
+renderer.domElement.addEventListener('mousemove', e => {
+  if (isDrag) { tip.style.display = 'none'; return; }
+  mn.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  rc.setFromCamera(mn, cam);
+  const hits = rc.intersectObjects(rcT);
+  const grp = hits.length ? findPillarGroup(hits[0].object) : null;
+  if (grp) {
+    const ck = CK[grp.userData.idx];
+    tip.textContent       = `${ck.name}  ·  ${ck.freq} Hz  ·  ${ck.mantra}`;
+    tip.style.color       = ck.css;
+    tip.style.borderColor = ck.css;
+    tip.style.left        = (e.clientX + 16) + 'px';
+    tip.style.top         = (e.clientY - 22) + 'px';
+    tip.style.display     = 'block';
+    renderer.domElement.style.cursor = 'pointer';
+  } else {
+    tip.style.display = 'none';
+    renderer.domElement.style.cursor = 'default';
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ANIMATION LOOP
+// ═══════════════════════════════════════════════════════════════
+const clock = new THREE.Clock();
+
+(function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  // — Water ripple animation —
+  wUni.uTime.value = t;
+  wUni.uColor.value.lerp(activeIdx >= 0 ? wTgts[activeIdx] : wDef, 0.022);
+
+  // — Torch flicker —
+  tLts.forEach((l, i) => {
+    l.intensity = 3.0 * (1 + 0.38 * Math.sin(t * 8.7 + i * 2.3) + 0.16 * Math.sin(t * 17.1 + i * 3.8));
+  });
+
+  // — Flame pulse —
+  fMesh.forEach((f, i) => {
+    const s = 0.72 + 0.42 * Math.sin(t * 9.4 + i * 2.9) + 0.16 * Math.sin(t * 18.2 + i * 1.5);
+    f.scale.setScalar(s);
+    f.position.y = 14.54 + 0.1 * Math.sin(t * 12.1 + i * 3.2);
+  });
+  fCore.forEach((f, i) => {
+    f.position.y = 14.65 + 0.12 * Math.sin(t * 13.5 + i * 2.1);
+  });
+
+  // — Crystal spin + emissive glow —
+  cMesh.forEach((c, i) => {
+    const on = i === activeIdx;
+    c.rotation.y = t * 0.42 + (i / N) * Math.PI * 2;
+    const baseGlow = 0.62 + 0.22 * Math.sin(t * 0.85 + i * 0.93);
+    c.material.emissiveIntensity = on ? 2.9 * (1 + 0.38 * Math.sin(t * 3.9)) : baseGlow;
+  });
+
+  // — God ray breathing —
+  rMesh.forEach((r, i) => {
+    r.material.opacity = i === activeIdx
+      ? 0.13 + 0.07 * Math.sin(t * 3.9)
+      : 0.038 + 0.014 * Math.sin(t * 0.62 + i * 0.84);
+  });
+
+  // — Active chakra state —
+  if (activeIdx >= 0) {
+    const ck  = CK[activeIdx];
+    const pulse = Math.sin(t * 3.9);
+    const aPulse  = 1 + 0.45 * pulse;
+
+    // Activation light pulse
+    aLts[activeIdx].intensity = 5.0 * aPulse;
+    cLight.intensity = 1.9 * aPulse;
+    waterGlowLight.color.set(ck.hex);
+    waterGlowLight.intensity = 0.5 + 0.25 * pulse;
+
+    // Central pillar resonance — frequency-scaled vibration
+    const af  = 1 + 3 * (ck.freq - 396) / (963 - 396); // 1–4 Hz per chakra
+    const vib = Math.sin(t * Math.PI * 2 * af);
+
+    cPilMat.emissive.set(ck.hex);
+    cPilMat.emissiveIntensity = 0.11 + 0.07 * vib;
+
+    // Aura rings expand/pulse
+    auRingMat.opacity  = 0.28 + 0.16 * vib;
+    auRingMat2.opacity = 0.14 + 0.08 * Math.sin(t * Math.PI * 2 * af + 0.7);
+    auRing2.rotation.y = t * 0.15;
+
+    // Physical vibration of central pillar in sync with chakra
+    cGrp.position.x = 0.012 * vib;
+    cGrp.position.z = 0.012 * Math.sin(t * Math.PI * 2 * af + 1.4);
+
+  } else {
+    // Fade out when inactive
+    cPilMat.emissiveIntensity = Math.max(0, cPilMat.emissiveIntensity * 0.94);
+    auRingMat.opacity         = Math.max(0, auRingMat.opacity - 0.013);
+    auRingMat2.opacity        = Math.max(0, auRingMat2.opacity - 0.008);
+    cGrp.position.x *= 0.9;
+    cGrp.position.z *= 0.9;
+  }
+
+  // — Dust motes drift upward —
+  for (let i = 0; i < DN; i++) {
+    dP[i*3+1] += 0.0038;
+    if (dP[i*3+1] > 26) dP[i*3+1] = 0;
+  }
+  dAttr.needsUpdate = true;
+
+  // — Slow auto-orbit —
+  if (!isDrag) { cTh += 0.00016; reposCam(); }
+
+  renderer.render(scene, cam);
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// RESIZE
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('resize', () => {
+  cam.aspect = innerWidth / innerHeight;
+  cam.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// FADE IN
+// ═══════════════════════════════════════════════════════════════
+setTimeout(() => {
+  const l = document.getElementById('loading');
+  l.classList.add('out');
+  setTimeout(() => l.remove(), 1100);
+}, 1200);
+</script>
+</body>
+</html>
