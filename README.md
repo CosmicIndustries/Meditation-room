@@ -1,4 +1,4 @@
-://github.com/CosmicIndustries/Meditation-room/blob/main/sacred_chamber_v4.html
+https://github.com/CosmicIndustries/Meditation-room/blob/main/sacred_chamber_v4.html
 
 # Meditation-room
 <a href="https://raw.githubusercontent.com/CosmicIndustries/Meditation-room/refs/heads/main/Screenshot_20260531_164558_Privacy%20Browser.jpg"><img src="https://raw.githubusercontent.com/CosmicIndustries/Meditation-room/refs/heads/main/Screenshot_20260531_164558_Privacy%20Browser.jpg"><img src=""></img></a>
