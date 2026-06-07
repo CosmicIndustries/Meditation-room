@@ -1,0 +1,2522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Sacred Chamber — Zora's Domain</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cinzel+Decorative&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;background:#000414;font-family:'Cinzel',Georgia,serif}
+#hud{position:fixed;top:0;left:0;right:0;padding:18px 16px 0;text-align:center;pointer-events:none;z-index:10}
+#hTitle{font-family:'Cinzel Decorative',serif;font-size:clamp(11px,1.9vw,22px);letter-spacing:5px;color:#fff;text-transform:uppercase;text-shadow:0 0 70px currentColor,0 0 25px currentColor;transition:color .9s}
+#hSub{font-size:clamp(8px,1.1vw,11px);color:rgba(180,210,255,.42);margin-top:7px;letter-spacing:2.5px;transition:color .8s}
+#hHint{font-size:8px;color:rgba(255,255,255,.12);margin-top:9px;letter-spacing:1.5px}
+#btns{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);display:flex;gap:9px;z-index:10}
+.cbtn{width:40px;height:40px;border-radius:50%;border:2px solid rgba(255,255,255,.14);cursor:pointer;transition:all .35s;position:relative;flex-shrink:0}
+.cbtn:hover{transform:scale(1.15);border-color:rgba(255,255,255,.55)}
+.cbtn.on{border-color:#fff}
+.cbtn.on::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:1.5px solid currentColor;animation:rp 2s ease-out infinite}
+@keyframes rp{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(1.82)}}
+#snd{position:fixed;top:15px;right:15px;z-index:10;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.18);color:rgba(180,210,255,.4);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;user-select:none}
+#snd:hover,#snd.on{border-color:rgba(80,160,255,.5);color:rgba(130,200,255,.9)}
+#tip{position:fixed;pointer-events:none;background:rgba(0,4,22,.88);padding:4px 12px;border-radius:2px;font-size:9px;letter-spacing:2.2px;border:1px solid rgba(80,140,255,.18);display:none;z-index:20;white-space:nowrap;text-transform:uppercase}
+#load{position:fixed;inset:0;background:#000414;z-index:100;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:rgba(70,150,220,.45);font-size:11px;letter-spacing:4px;text-transform:uppercase;transition:opacity 1.2s;font-family:'Cinzel Decorative',serif}
+#load .g{font-size:30px;animation:gp 2.4s ease-in-out infinite}
+@keyframes gp{0%,100%{opacity:.25;transform:scale(.88)}50%{opacity:.75;transform:scale(1.1)}}
+#load.out{opacity:0;pointer-events:none}
+
+#vBtn{position:fixed;top:15px;left:15px;z-index:10;padding:5px 11px;border-radius:3px;
+  background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.18);color:rgba(180,210,255,.55);
+  font-size:8px;letter-spacing:2px;cursor:pointer;font-family:'Cinzel',serif;text-transform:uppercase;
+  transition:all .3s;user-select:none}
+#vBtn:hover{border-color:rgba(80,160,255,.5);color:rgba(130,200,255,.9)}
+/* Padma button icons override */
+.cbtn svg{width:26px;height:26px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  pointer-events:none;opacity:.82;transition:opacity .35s}
+.cbtn:hover svg,.cbtn.on svg{opacity:1}
+/* Vignette overlay */
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:2;
+  background:radial-gradient(ellipse at 50% 50%,transparent 40%,rgba(0,0,8,.88) 100%);}
+/* Film grain canvas */
+#grain{position:fixed;inset:0;pointer-events:none;z-index:3;opacity:.032;mix-blend-mode:screen;}
+</style>
+
+</head>
+<body>
+<div id="vignette"></div>
+<canvas id="grain"></canvas>
+<div id="load"><div class="g">⬡</div><div>Summoning the Sacred Waters</div></div>
+<div id="hud">
+  <div id="hTitle">Sacred Chamber</div>
+  <div id="hSub">Select a crystal pillar to begin meditation</div>
+  <div id="hHint" id="hHint">Click Pillar · Drag to Orbit · Scroll to Zoom · V = Cycle View</div>
+</div>
+<div id="btns"></div>
+<div id="vBtn" title="Cycle view (V)">ORBIT</div>
+<div id="snd" title="Binaural tones + water ambience">♪</div>
+<div id="tip"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+try{
+const CK=[
+  {name:'Root',        sk:'Muladhara',   hex:0xFF1111,css:'#FF1111',freq:396,mantra:'LAM',el:'Earth',  mudra:'Gyan'},
+  {name:'Sacral',      sk:'Svadhisthana',hex:0xFF7700,css:'#FF7700',freq:417,mantra:'VAM',el:'Water',  mudra:'Varuna'},
+  {name:'Solar Plexus',sk:'Manipura',    hex:0xFFEE00,css:'#FFEE00',freq:528,mantra:'RAM',el:'Fire',   mudra:'Agni'},
+  {name:'Heart',       sk:'Anahata',     hex:0x00CC44,css:'#00CC44',freq:639,mantra:'YAM',el:'Air',    mudra:'Anjali'},
+  {name:'Throat',      sk:'Vishuddha',   hex:0x0088FF,css:'#0088FF',freq:741,mantra:'HAM',el:'Sound',  mudra:'Akasha'},
+  {name:'Third Eye',   sk:'Ajna',        hex:0x3311EE,css:'#5522FF',freq:852,mantra:'AUM',el:'Light',  mudra:'Hakini'},
+  {name:'Crown',       sk:'Sahasrara',   hex:0xAA00FF,css:'#BB22FF',freq:963,mantra:'OM', el:'Consciousness',mudra:'Lotus'},
+];
+const N=7,OR=16;
+
+// ── Mobile detection ───────────────────────────────────────────────────────
+const isMobile=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)||window.innerWidth<900;
+const PR=Math.min(devicePixelRatio,isMobile?1.5:2.0);
+
+const renderer=new THREE.WebGLRenderer({antialias:!isMobile,powerPreference:'high-performance',alpha:false});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(PR);
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=isMobile?1.1:1.05;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=isMobile?THREE.BasicShadowMap:THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x000414);
+scene.fog=new THREE.FogExp2(0x000414,0.011);
+const cam=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,280);
+const CT=new THREE.Vector3(0,4,0);
+let cTh=Math.PI,cPh=.38,cR=26;
+let cThTarget=Math.PI,cPhTarget=.38,cRTarget=26;
+
+// ── CubeCamera IBL — small probe updated every 90 frames ──────────────────
+const _cubeSize=isMobile?64:128;
+const cubeRT=new THREE.WebGLCubeRenderTarget(_cubeSize,{format:THREE.RGBFormat,generateMipmaps:true,minFilter:THREE.LinearMipmapLinearFilter});
+const cubeCamera=new THREE.CubeCamera(.5,200,cubeRT);
+cubeCamera.position.set(0,14,0);
+scene.add(cubeCamera);
+let _cubeFrame=0;
+const _updateCube=(frameN)=>{
+  if(frameN%90!==0||cMesh.length===0)return;
+  try{
+    cMesh.forEach(c=>c.visible=false);
+    cubeCamera.update(renderer,scene);
+    cMesh.forEach(c=>c.visible=true);
+    scene.environment=cubeRT.texture;
+  }catch(e){/* skip on unsupported driver */}
+};
+const reC=()=>{
+  cTh+=(cThTarget-cTh)*.072;
+  cPh+=(cPhTarget-cPh)*.072;
+  cR +=(cRTarget -cR )*.072;
+  cam.position.set(CT.x+cR*Math.sin(cPh)*Math.sin(cTh),CT.y+cR*Math.cos(cPh),CT.z+cR*Math.sin(cPh)*Math.cos(cTh));
+  cam.lookAt(CT);
+};
+reC();
+
+let drag=false,mDown=[0,0],mPrev=[0,0];
+const el=renderer.domElement;
+el.addEventListener('mousedown',e=>{drag=true;mPrev=mDown=[e.clientX,e.clientY]});
+el.addEventListener('mousemove',e=>{if(!drag)return;cTh-=(e.clientX-mPrev[0])*.004;cPh=Math.max(.06,Math.min(Math.PI*.46,cPh+(e.clientY-mPrev[1])*.004));mPrev=[e.clientX,e.clientY];reC()});
+el.addEventListener('mouseup',()=>{drag=false;cThTarget=cTh;cPhTarget=cPh;cRTarget=cR;});
+el.addEventListener('wheel',e=>{cR=Math.max(4,Math.min(54,cR+e.deltaY*.055));reC()},{passive:true});
+let tp=null;
+el.addEventListener('touchstart',e=>{tp=e.touches[0];mDown=[tp.clientX,tp.clientY];drag=true},{passive:true});
+el.addEventListener('touchmove',e=>{const t=e.touches[0];cTh-=(t.clientX-tp.clientX)*.004;cPh=Math.max(.06,Math.min(Math.PI*.46,cPh+(t.clientY-tp.clientY)*.004));tp=t;reC()},{passive:true});
+el.addEventListener('touchend',()=>{drag=false;cThTarget=cTh;cPhTarget=cPh;cRTarget=cR;});
+
+let actx=null,aN=[],sndOn=false,wNoise=null,_mComp=null;
+// Isochronic brainwave targets per chakra (Hz)
+const ISO_HZ=[2,6,8,10,12,40,40];
+
+const iA=()=>{
+  if(!actx){
+    actx=new(AudioContext||webkitAudioContext)();
+    _mComp=actx.createDynamicsCompressor();
+    _mComp.threshold.value=-20; _mComp.knee.value=6;
+    _mComp.ratio.value=10; _mComp.attack.value=0.003; _mComp.release.value=0.25;
+    _mComp.connect(actx.destination);
+  }
+};
+
+// Stop all chakra tones (not water)
+const stopA=()=>{
+  const t=actx?actx.currentTime:0;
+  aN.forEach(({o,g,sp})=>{
+    try{g.gain.linearRampToValueAtTime(0,t+1.2)}catch(e){}
+    setTimeout(()=>{try{o&&o.stop()}catch(e){}try{sp&&sp.stop()}catch(e){}},1300);
+  });
+  aN=[];
+};
+
+// Brown noise: generate buffer, each sample = prev*0.997 + white*0.003
+// Then HP filter at 40Hz to remove DC, LP at 800Hz to keep warmth.
+const makeBrownBuf=()=>{
+  const sr=actx.sampleRate, len=sr*6;
+  const buf=actx.createBuffer(2,len,sr);
+  for(let c=0;c<2;c++){
+    const d=buf.getChannelData(c);
+    let b=0, peak=0;
+    for(let i=0;i<len;i++){b=b*0.997+(Math.random()*2-1)*0.003; d[i]=b; peak=Math.max(peak,Math.abs(b));}
+    if(peak>0){const sc=0.88/peak; for(let i=0;i<len;i++)d[i]*=sc;} // normalise to 0.88 peak
+  }
+  return buf;
+};
+
+const startWater=()=>{
+  if(!actx||wNoise)return;
+  const buf=makeBrownBuf();
+  wNoise=actx.createBufferSource();
+  wNoise.buffer=buf; wNoise.loop=true;
+  const lp=actx.createBiquadFilter(); lp.type='lowpass';  lp.frequency.value=600;
+  const hp=actx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=40;
+  const wg=actx.createGain(); wg.gain.value=0.042;
+  wNoise.connect(lp); lp.connect(hp); hp.connect(wg); wg.connect(_mComp||actx.destination);
+  wNoise.start();
+};
+const stopWater=()=>{if(wNoise){try{wNoise.stop()}catch(e){}wNoise=null}};
+
+// playA: isochronic tone system
+// 1. Brown noise carrier, amplitude-modulated at ISO_HZ[idx] (brainwave entrainment)
+//    — hard on/off gating at the isochronic rate creates the distinct "pulse" character
+// 2. Solfeggio fundamental (fr Hz) as a soft sine underneath
+// 3. Octave sub (fr/2) at very low volume for body resonance
+const playA=(fr,idx)=>{
+  if(!actx||!sndOn)return;
+  stopA();
+  const t=actx.currentTime;
+  const isoHz=ISO_HZ[idx]||8;
+
+  // ── Brown noise isochronic carrier ────────────────────────────────────────
+  // New short brown noise buffer looped, gated by a ScriptProcessor-free
+  // approach: use an OscillatorNode as the AM modulator.
+  // Isochronic = noise burst on, silence off, at isoHz rate.
+  // We use gain node modulated by a rectified oscillator.
+  const noiseBuf=makeBrownBuf();
+  const nSrc=actx.createBufferSource();
+  nSrc.buffer=noiseBuf; nSrc.loop=true;
+
+  // LP + HP shape the noise spectrum
+  const nlp=actx.createBiquadFilter(); nlp.type='lowpass';  nlp.frequency.value=700;
+  const nhp=actx.createBiquadFilter(); nhp.type='highpass'; nhp.frequency.value=60;
+
+  // Master noise gain, fades in
+  const noiseGain=actx.createGain();
+  noiseGain.gain.setValueAtTime(0,t);
+  noiseGain.gain.linearRampToValueAtTime(0.055,t+2.5);
+
+  // Route: nSrc → nlp → nhp → noiseGain → destination
+  nSrc.connect(nlp); nlp.connect(nhp); nhp.connect(noiseGain);
+  noiseGain.connect(_mComp||actx.destination);
+
+  // AM gate: triangle osc → WaveShaper (abs-rect) → noiseGain.gain
+  // abs(sin) shape on triangle gives clean isochronic pulse without DC accumulation
+  const amOsc=actx.createOscillator();
+  amOsc.frequency.value=isoHz;
+  amOsc.type='triangle';
+  const wsData=new Float32Array(256);
+  for(let i=0;i<256;i++){const x=i/255*2-1; wsData[i]=Math.abs(x);}
+  const ws=actx.createWaveShaper(); ws.curve=wsData;
+  amOsc.connect(ws); ws.connect(noiseGain.gain);
+  amOsc.start();
+
+  // ── Solfeggio sine fundamental ────────────────────────────────────────────
+  const sol=actx.createOscillator(); sol.type='sine'; sol.frequency.value=fr;
+  const solG=actx.createGain();
+  solG.gain.setValueAtTime(0,t);
+  solG.gain.linearRampToValueAtTime(0.038,t+3.0);
+  sol.connect(solG); solG.connect(_mComp||actx.destination); sol.start();
+
+  // ── Sub octave ────────────────────────────────────────────────────────────
+  const sub=actx.createOscillator(); sub.type='sine'; sub.frequency.value=fr*.5;
+  const subG=actx.createGain();
+  subG.gain.setValueAtTime(0,t);
+  subG.gain.linearRampToValueAtTime(0.018,t+3.5);
+  sub.connect(subG); subG.connect(_mComp||actx.destination); sub.start();
+
+  aN.push({o:sol,g:solG},{o:sub,g:subG},{sp:nSrc,o:amOsc,g:noiseGain});
+};
+document.getElementById('snd').addEventListener('click',()=>{iA();sndOn=!sndOn;const b=document.getElementById('snd');b.textContent=sndOn?'♪':'♩';b.classList.toggle('on',sndOn);if(!sndOn){stopA();stopWater()}else{startWater();if(aIdx>=0)playA(CK[aIdx].freq)}if(actx&&actx.state==='suspended')actx.resume()});
+
+const aM=(geo,mat,x,y,z,par)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);par.add(m);return m};
+
+const ambL=new THREE.AmbientLight(0x06182a,.65);scene.add(ambL);
+// Hemisphere light — sky teal-blue, ground deep purple — fakes cave bounce GI
+const hemiL=new THREE.HemisphereLight(0x0d3060,0x180820,.52);scene.add(hemiL);
+
+// Cave dome with height fog — ground pools dark, upper dome lighter blue-black
+const caveMat=new THREE.MeshStandardMaterial({color:0x090c12,roughness:1,side:THREE.BackSide});
+caveMat.onBeforeCompile=(shader)=>{
+  shader.uniforms.fogNear={value:0.0};
+  shader.uniforms.fogFar={value:1.0};
+  shader.fragmentShader='uniform float fogNear;\nuniform float fogFar;\nvarying float vCaveY;\n'+shader.fragmentShader;
+  shader.fragmentShader=shader.fragmentShader.replace(
+    '#include <dithering_fragment>',
+    `#include <dithering_fragment>
+    // Height fog — bottom of cave pools dark, upper walls lighten slightly
+    float hf=clamp((vCaveY+5.0)/45.0,0.,1.);
+    gl_FragColor.rgb=mix(gl_FragColor.rgb*0.3,gl_FragColor.rgb*1.0,hf);
+    // Subtle surface noise via world position
+    float sn=fract(sin(vCaveY*12.4)*43758.5);
+    gl_FragColor.rgb+=sn*0.012;`
+  );
+  shader.vertexShader='varying float vCaveY;\n'+shader.vertexShader;
+  shader.vertexShader=shader.vertexShader.replace(
+    '#include <worldpos_vertex>',
+    `#include <worldpos_vertex>\nvCaveY=worldPosition.y;`
+  );
+};
+aM(new THREE.SphereGeometry(54,32,22,0,Math.PI*2,0,Math.PI*.65),caveMat,0,3,0,scene);
+// Cave floor with caustics injection
+const floorMat=new THREE.MeshStandardMaterial({color:0x0b0d11,roughness:.98});
+floorMat.onBeforeCompile=(shader)=>{
+  shader.uniforms.uTime={value:0};
+  shader.uniforms.causticStr={value:0.045};
+  shader.fragmentShader='uniform float uTime;\nuniform float causticStr;\nvarying vec3 vFloorWorld;\n'+shader.fragmentShader;
+  shader.fragmentShader=shader.fragmentShader.replace(
+    '#include <dithering_fragment>',
+    `#include <dithering_fragment>
+    float c1=sin(vFloorWorld.x*1.1+uTime*.4)*sin(vFloorWorld.z*.9+uTime*.31);
+    float c2=sin((vFloorWorld.x+vFloorWorld.z)*.78+uTime*.55)*sin((vFloorWorld.x-vFloorWorld.z)*.68+uTime*.27);
+    float caustic=clamp((c1+c2)*.5+.5,0.,1.);
+    gl_FragColor.rgb+=caustic*causticStr*vec3(.15,.5,1.);`
+  );
+  shader.vertexShader='varying vec3 vFloorWorld;\n'+shader.vertexShader;
+  shader.vertexShader=shader.vertexShader.replace(
+    '#include <worldpos_vertex>',
+    `#include <worldpos_vertex>\nvFloorWorld=worldPosition.xyz;`
+  );
+  floorMat.userData.shader=shader;
+};
+{const m=new THREE.Mesh(new THREE.CircleGeometry(52,72),floorMat);m.rotation.x=-Math.PI/2;m.position.y=-5;m.receiveShadow=true;scene.add(m)}
+
+// Blob shadow under figure
+{const blobTex=new THREE.CanvasTexture((()=>{const c=document.createElement('canvas');c.width=128;c.height=128;const g=c.getContext('2d');const grd=g.createRadialGradient(64,64,0,64,64,62);grd.addColorStop(0,'rgba(0,0,0,0.72)');grd.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=grd;g.fillRect(0,0,128,128);return c;})());
+const blobM=new THREE.Mesh(new THREE.PlaneGeometry(5,5),new THREE.MeshBasicMaterial({map:blobTex,transparent:true,depthWrite:false,blending:THREE.MultiplyBlending}));
+blobM.rotation.x=-Math.PI/2;blobM.position.set(0,-4.98,0);blobM.renderOrder=-1;scene.add(blobM);}
+
+const dWU={uTime:{value:0},uColor:{value:new THREE.Color(0x001428)}};
+{const m=new THREE.Mesh(new THREE.PlaneGeometry(92,92,1,1),new THREE.ShaderMaterial({uniforms:dWU,
+  vertexShader:`varying vec2 vU;void main(){vU=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+  fragmentShader:`uniform float uTime;uniform vec3 uColor;varying vec2 vU;
+    float cs(vec2 p){return sin(p.x*6.+uTime)*cos(p.y*5.5-uTime*.88)+sin(p.x*3.5-uTime*.78)*cos(p.y*7.1+uTime*.62)+sin(p.x*9.2+uTime*1.1)*cos(p.y*3.8-uTime*.72)*.6;}
+    void main(){float v=cs(vU*6.2);v=pow(clamp(v*.33+.5,0.,1.),2.6);gl_FragColor=vec4(uColor+vec3(.01,.03,.045)*v,v*.65+.18);}`,
+  transparent:true,depthWrite:false}));m.rotation.x=-Math.PI/2;m.position.y=-2.5;scene.add(m)}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GPU WATER PHYSICS — Navier-Stokes on render textures (ping-pong)
+//
+// Layout per pixel of each RT:
+//   simRT  .r = H (water depth)   .g = h_ripple_cur   .b = h_ripple_prev   .a = terrain
+//   velRT  .r = velocity_x        .g = velocity_z      .b = divergence       .a = pressure
+//
+// Equations implemented:
+//   [1] H_new = H - dt * div(H*u)              (shallow water continuity)
+//   [2] u_new = u - g*dt*grad(H+b) - k*dt*u   (momentum + gravity + friction)
+//   [3] div(u) → p via Jacobi                  (pressure Poisson)
+//   [4] u -= dt/rho * grad(p)                   (pressure projection)
+//   [5] h_rip_new = 2h - h_old + c²dt²∇²h - λ*(h-h_old)  (ripple wave eq)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const SIM_RES = 256; // sim grid resolution — power of 2, GPU-friendly
+const SIM_DT  = 0.016;
+const SIM_G   = 9.2;   // gravity
+const SIM_K   = 0.018; // friction/damping
+const SIM_C   = 3.8;   // ripple wave speed
+const SIM_LAM = 0.012; // ripple damping
+const SIM_RHO = 1.0;   // density (water ~1)
+const SIM_H   = 1.0/SIM_RES; // cell size in UV space
+
+// ── Render targets ────────────────────────────────────────────────────────────
+const rtOpts={minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,
+  type:THREE.HalfFloatType,depthBuffer:false};
+let simRT_A=new THREE.WebGLRenderTarget(SIM_RES,SIM_RES,rtOpts);
+let simRT_B=new THREE.WebGLRenderTarget(SIM_RES,SIM_RES,rtOpts);
+let velRT_A=new THREE.WebGLRenderTarget(SIM_RES,SIM_RES,rtOpts);
+let velRT_B=new THREE.WebGLRenderTarget(SIM_RES,SIM_RES,rtOpts);
+let presRT_A=new THREE.WebGLRenderTarget(SIM_RES,SIM_RES,rtOpts);
+let presRT_B=new THREE.WebGLRenderTarget(SIM_RES,SIM_RES,rtOpts);
+
+// ── Offscreen fullscreen quad rig ─────────────────────────────────────────────
+const simCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+const simScene=new THREE.Scene();
+const simQuad=new THREE.Mesh(new THREE.PlaneGeometry(2,2));
+simScene.add(simQuad);
+
+// ── GLSL shared snippets ──────────────────────────────────────────────────────
+const GLSL_SAMPLE=`
+  vec4 sS(sampler2D tx,vec2 uv){return texture2D(tx,fract(uv));}
+  vec4 sC(sampler2D tx,vec2 uv){return texture2D(tx,clamp(uv,vec2(0.001),vec2(0.999)));}
+`;
+
+const GLSL_PERLIN=`
+  vec3 _pp(vec3 p){p=fract(p*vec3(.1031,.103,.0973));p+=dot(p,p.yxz+19.19);return fract((p.xxy+p.yxx)*p.zyx);}
+  float _pn(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);
+    float a=dot(_pp(vec3(i,0.)).xy,f),b=dot(_pp(vec3(i+vec2(1,0),0.)).xy,f-vec2(1,0)),
+          c=dot(_pp(vec3(i+vec2(0,1),0.)).xy,f-vec2(0,1)),d=dot(_pp(vec3(i+vec2(1,1),0.)).xy,f-vec2(1,1));
+    return mix(mix(a,b,u.x),mix(c,d,u.x),u.y)*.5+.5;}
+  float pfbm(vec2 p){float v=0.,a=.5;for(int i=0;i<4;i++){v+=a*_pn(p);p*=2.1;p+=vec2(3.1,7.3);a*=.5;}return v;}
+`;
+
+const GLSL_VERT=`varying vec2 vUV;void main(){vUV=uv;gl_Position=vec4(position.xy,0.,1.);}`;
+
+// ── Pass 0: Init sim state (called once) ──────────────────────────────────────
+const initMat=new THREE.ShaderMaterial({uniforms:{uSeed:{value:Math.random()*100}},
+  vertexShader:GLSL_VERT,
+  fragmentShader:`
+    uniform float uSeed;varying vec2 vUV;
+    ${GLSL_PERLIN}
+    void main(){
+      vec2 p=vUV;
+      float r=length(p*2.-1.);
+      float terrain=0.; // flat terrain
+      // Initial water depth — deeper at centre, shallow island area
+      float H=max(0., pfbm(p*3.+uSeed)*.4 + .3 - smoothstep(.0,.35,r)*.8);
+      float ripple=pfbm(p*8.+uSeed*.3)*.04-.02;
+      gl_FragColor=vec4(H, ripple, ripple, terrain);}`
+});
+simQuad.material=initMat;
+renderer.setRenderTarget(simRT_A); renderer.render(simScene,simCam);
+renderer.setRenderTarget(simRT_B); renderer.render(simScene,simCam);
+renderer.setRenderTarget(null);
+
+// ── Pass 1: Velocity advect + gravity + friction ───────────────────────────────
+const velMat=new THREE.ShaderMaterial({
+  uniforms:{
+    uSim:{value:simRT_A.texture},
+    uVel:{value:velRT_A.texture},
+    uDt:{value:SIM_DT}, uG:{value:SIM_G},
+    uK:{value:SIM_K},   uH:{value:SIM_H},
+    uTime:{value:0},
+  },
+  vertexShader:GLSL_VERT,
+  fragmentShader:`
+    uniform sampler2D uSim,uVel;
+    uniform float uDt,uG,uK,uH,uTime;
+    varying vec2 vUV;
+    ${GLSL_SAMPLE}
+    ${GLSL_PERLIN}
+    void main(){
+      vec2 uv=vUV;
+      vec4 sim =sC(uSim,uv);
+      vec4 vel0=sC(uVel,uv);
+      float H=sim.r;
+
+      // [Eq 1 prep] Surface height = H + terrain
+      float hC =sC(uSim,uv).r;
+      float hR =sC(uSim,uv+vec2(uH,0.)).r;
+      float hL =sC(uSim,uv-vec2(uH,0.)).r;
+      float hU =sC(uSim,uv+vec2(0.,uH)).r;
+      float hD =sC(uSim,uv-vec2(0.,uH)).r;
+
+      // [Eq 2] u_new = u - g*dt*grad(H) - k*dt*u
+      // Central difference gradient of H
+      float gx=(hR-hL)/(2.*uH);
+      float gz=(hU-hD)/(2.*uH);
+
+      vec2 vel=vel0.rg;
+      vel -= uG*uDt*vec2(gx,gz);   // gravity slope
+      vel *= (1.-uK*uDt);          // friction damping
+
+      // Semi-Lagrangian advection: look back along velocity
+      vec2 uvBack=uv - vel*uDt;
+      vec2 velAdv=sC(uVel,uvBack).rg;
+      vel=mix(vel,velAdv,.6); // blend advected
+
+      // Perlin turbulence injection (wind, drips, ambient)
+      float turb=pfbm(uv*6.+vec2(uTime*.08,uTime*.06))-.5;
+      vel+=turb*0.002;
+
+      // Divergence for pressure solve: div = (vx_R - vx_L + vz_U - vz_D)/(2h)
+      float vxR=sC(uVel,uv+vec2(uH,0.)).r;
+      float vxL=sC(uVel,uv-vec2(uH,0.)).r;
+      float vzU=sC(uVel,uv+vec2(0.,uH)).g;
+      float vzD=sC(uVel,uv-vec2(0.,uH)).g;
+      float div=(vxR-vxL+vzU-vzD)/(2.*uH);
+
+      gl_FragColor=vec4(vel.x, vel.y, div, vel0.a);}`
+});
+
+// ── Pass 2: Pressure Jacobi (run N times, ping-pong presRT) ──────────────────
+const presMat=new THREE.ShaderMaterial({
+  uniforms:{
+    uVel:{value:velRT_B.texture},
+    uPres:{value:presRT_A.texture},
+    uH:{value:SIM_H}, uDt:{value:SIM_DT}, uRho:{value:SIM_RHO},
+  },
+  vertexShader:GLSL_VERT,
+  fragmentShader:`
+    uniform sampler2D uVel,uPres;
+    uniform float uH,uDt,uRho;
+    varying vec2 vUV;
+    ${GLSL_SAMPLE}
+    void main(){
+      // [Eq 3] Jacobi: p_ij = (p_R+p_L+p_U+p_D - div*h²) / 4
+      float div=sC(uVel,vUV).b;
+      float pR=sC(uPres,vUV+vec2(uH,0.)).r;
+      float pL=sC(uPres,vUV-vec2(uH,0.)).r;
+      float pU=sC(uPres,vUV+vec2(0.,uH)).r;
+      float pD=sC(uPres,vUV-vec2(0.,uH)).r;
+      float p=(pR+pL+pU+pD - uRho*div*uH*uH/uDt)/4.;
+      gl_FragColor=vec4(p,0.,0.,1.);}`
+});
+
+// ── Pass 3: Pressure projection (subtract grad(p) from velocity) ──────────────
+const projMat=new THREE.ShaderMaterial({
+  uniforms:{
+    uVel:{value:velRT_B.texture},
+    uPres:{value:presRT_A.texture},
+    uH:{value:SIM_H}, uDt:{value:SIM_DT}, uRho:{value:SIM_RHO},
+  },
+  vertexShader:GLSL_VERT,
+  fragmentShader:`
+    uniform sampler2D uVel,uPres;
+    uniform float uH,uDt,uRho;
+    varying vec2 vUV;
+    ${GLSL_SAMPLE}
+    void main(){
+      // [Eq 4] u -= (dt/rho)*grad(p)
+      vec4 v=sC(uVel,vUV);
+      float pR=sC(uPres,vUV+vec2(uH,0.)).r;
+      float pL=sC(uPres,vUV-vec2(uH,0.)).r;
+      float pU=sC(uPres,vUV+vec2(0.,uH)).r;
+      float pD=sC(uPres,vUV-vec2(0.,uH)).r;
+      float gpx=(pR-pL)/(2.*uH);
+      float gpz=(pU-pD)/(2.*uH);
+      v.rg -= (uDt/uRho)*vec2(gpx,gpz);
+      v.rg *= .998; // tiny energy bleed to keep stable
+      gl_FragColor=v;}`
+});
+
+// ── Pass 4: Advect H + ripple wave equation ───────────────────────────────────
+const simMat=new THREE.ShaderMaterial({
+  uniforms:{
+    uSim:{value:simRT_A.texture},
+    uVel:{value:velRT_B.texture},
+    uDt:{value:SIM_DT}, uH:{value:SIM_H},
+    uC:{value:SIM_C},   uLam:{value:SIM_LAM},
+    uTime:{value:0},    uImpulse:{value:new THREE.Vector3(0,0,0)}, // x,z,strength
+  },
+  vertexShader:GLSL_VERT,
+  fragmentShader:`
+    uniform sampler2D uSim,uVel;
+    uniform float uDt,uH,uC,uLam,uTime;
+    uniform vec3 uImpulse;
+    varying vec2 vUV;
+    ${GLSL_SAMPLE}
+    ${GLSL_PERLIN}
+    void main(){
+      vec2 uv=vUV;
+      vec4 sim=sC(uSim,uv);
+      float H=sim.r, hCur=sim.g, hOld=sim.b;
+      vec2 vel=sC(uVel,uv).rg;
+
+      // [Eq 1] H_new = H - dt*div(H*u)
+      // Flux differences
+      vec2 velR=sC(uVel,uv+vec2(uH,0.)).rg;
+      vec2 velL=sC(uVel,uv-vec2(uH,0.)).rg;
+      vec2 velU=sC(uVel,uv+vec2(0.,uH)).rg;
+      vec2 velD=sC(uVel,uv-vec2(0.,uH)).rg;
+      float HR=sC(uSim,uv+vec2(uH,0.)).r;
+      float HL=sC(uSim,uv-vec2(uH,0.)).r;
+      float HU=sC(uSim,uv+vec2(0.,uH)).r;
+      float HD=sC(uSim,uv-vec2(0.,uH)).r;
+      float fluxX=(HR*velR.x - HL*velL.x)/(2.*uH);
+      float fluxZ=(HU*velU.y - HD*velD.y)/(2.*uH);
+      float Hnew=max(0., H - uDt*(fluxX+fluxZ));
+
+      // Bioluminescent drip impulse — random Perlin-driven drop points
+      float drip=pfbm(uv*18.+vec2(uTime*.22,uTime*.17));
+      if(drip>.82) Hnew+=.015*(drip-.82)*6.;
+
+      // External impulse (from user click or chakra activation)
+      float impDist=length(uv-uImpulse.xy);
+      Hnew+=uImpulse.z*smoothstep(.08,.0,impDist);
+
+      // [Eq 5] h_rip_new = 2h - h_old + c²dt²∇²h - λ(h-h_old)
+      float hR2=sC(uSim,uv+vec2(uH,0.)).g;
+      float hL2=sC(uSim,uv-vec2(uH,0.)).g;
+      float hU2=sC(uSim,uv+vec2(0.,uH)).g;
+      float hD2=sC(uSim,uv-vec2(0.,uH)).g;
+      float laplacian=(hR2+hL2+hU2+hD2-4.*hCur)/(uH*uH);
+      float hNew=2.*hCur - hOld
+        + uC*uC*uDt*uDt*laplacian
+        - uLam*(hCur-hOld);
+      hNew*=.998; // global damping
+
+      gl_FragColor=vec4(Hnew, hNew, hCur, sim.a);}`
+});
+
+// ── Expose uniforms for animate loop ─────────────────────────────────────────
+window._waterSim={
+  velMat, presMat, projMat, simMat,
+  simRT_A, simRT_B, velRT_A, velRT_B, presRT_A, presRT_B,
+  simScene, simCam, simQuad,
+  JACOBI_ITERS: 24,
+  step(t){
+    const ws=window._waterSim;
+    const r=renderer;
+
+    // Pass 1: velocity advect + gravity (reads simRT_A, velRT_A → velRT_B)
+    ws.velMat.uniforms.uSim.value=ws.simRT_A.texture;
+    ws.velMat.uniforms.uVel.value=ws.velRT_A.texture;
+    ws.velMat.uniforms.uTime.value=t;
+    ws.simQuad.material=ws.velMat;
+    r.setRenderTarget(ws.velRT_B); r.render(ws.simScene,ws.simCam);
+
+    // Pass 2+3: Jacobi pressure solve (ping-pong presRT)
+    ws.presMat.uniforms.uVel.value=ws.velRT_B.texture;
+    for(let j=0;j<ws.JACOBI_ITERS;j++){
+      ws.presMat.uniforms.uPres.value=(j%2===0)?ws.presRT_A.texture:ws.presRT_B.texture;
+      ws.simQuad.material=ws.presMat;
+      const tgt=(j%2===0)?ws.presRT_B:ws.presRT_A;
+      r.setRenderTarget(tgt); r.render(ws.simScene,ws.simCam);
+    }
+    const finalPres=(ws.JACOBI_ITERS%2===0)?ws.presRT_A:ws.presRT_B;
+
+    // Pass 3: project velocity (reads velRT_B, finalPres → velRT_A)
+    ws.projMat.uniforms.uVel.value=ws.velRT_B.texture;
+    ws.projMat.uniforms.uPres.value=finalPres.texture;
+    ws.simQuad.material=ws.projMat;
+    r.setRenderTarget(ws.velRT_A); r.render(ws.simScene,ws.simCam);
+
+    // Pass 4: advect H + ripple (reads simRT_A, velRT_A → simRT_B)
+    ws.simMat.uniforms.uSim.value=ws.simRT_A.texture;
+    ws.simMat.uniforms.uVel.value=ws.velRT_A.texture;
+    ws.simMat.uniforms.uTime.value=t;
+    ws.simQuad.material=ws.simMat;
+    r.setRenderTarget(ws.simRT_B); r.render(ws.simScene,ws.simCam);
+
+    // Ping-pong swap
+    let tmp=ws.simRT_A; ws.simRT_A=ws.simRT_B; ws.simRT_B=tmp;
+    r.setRenderTarget(null);
+
+    // Feed result into surface material
+    wU.uSimTex&&(wU.uSimTex.value=ws.simRT_A.texture);
+  }
+};
+
+
+const wU={uTime:{value:0},uColor:{value:new THREE.Color(0x002e4a)},uChakra:{value:new THREE.Color(0x002244)},uSimTex:{value:null}};
+const wSurf=new THREE.Mesh(new THREE.PlaneGeometry(90,90,128,128),new THREE.ShaderMaterial({uniforms:wU,
+  vertexShader:`uniform float uTime;uniform sampler2D uSimTex;
+    varying vec2 vXY;varying float vH;varying vec3 vNrm;varying vec2 vUV;
+    vec3 _p3(vec3 p){p=fract(p*vec3(.1031,.103,.0973));p+=dot(p,p.yxz+19.19);return fract((p.xxy+p.yxx)*p.zyx);}
+    float _n(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);
+      float a=dot(_p3(vec3(i,0.)).xy,f),b=dot(_p3(vec3(i+vec2(1,0),0.)).xy,f-vec2(1,0)),
+            c=dot(_p3(vec3(i+vec2(0,1),0.)).xy,f-vec2(0,1)),d=dot(_p3(vec3(i+vec2(1,1),0.)).xy,f-vec2(1,1));
+      return mix(mix(a,b,u.x),mix(c,d,u.x),u.y)*.5+.5;}
+    float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*_n(p);p*=2.1;p+=vec2(3.1,7.3);a*=.5;}return v;}
+    void main(){
+      vUV=uv; vXY=position.xy;
+      // Sample GPU sim: .r=H depth, .g=ripple, .a=terrain
+      vec4 sim=texture2D(uSimTex,uv);
+      float H=sim.r, rip=sim.g;
+      // Layer A: shallow-water sim displacement
+      float hSim=(H+rip)*0.28;
+      // Layer B: fBm detail on top for sub-cell variation
+      float hFbm=fbm(position.xy*.12+vec2(uTime*.06,uTime*.04))*.08
+                +fbm(position.xy*.28-vec2(uTime*.04,uTime*.08))*.04;
+      float h=hSim+hFbm;
+      // Normal from central differences (use neighbour UVs)
+      float eps=1./128.;
+      float hR=(texture2D(uSimTex,uv+vec2(eps,0.)).r+texture2D(uSimTex,uv+vec2(eps,0.)).g)*.28;
+      float hU=(texture2D(uSimTex,uv+vec2(0.,eps)).r+texture2D(uSimTex,uv+vec2(0.,eps)).g)*.28;
+      vNrm=normalize(vec3((h-hR)/eps,1.,(h-hU)/eps));
+      vH=h;
+      gl_Position=projectionMatrix*modelViewMatrix*vec4(position.xy,h,1.);}`,
+  fragmentShader:`uniform vec3 uColor;uniform vec3 uChakra;uniform sampler2D uSimTex;
+    varying vec2 vXY;varying float vH;varying vec3 vNrm;varying vec2 vUV;
+    void main(){
+      float r=length(vXY);
+      vec4 sim=texture2D(uSimTex,vUV);
+      float H=sim.r, rip=sim.g;
+      // Wave brightness from height
+      float s=clamp((vH+.18)*3.2,0.,1.);
+      // Caustic: two angled light sources raking across the normal map
+      float caust=pow(max(dot(vNrm,normalize(vec3(.6,1.,.4))),0.),9.)*.48
+                 +pow(max(dot(vNrm,normalize(vec3(-.4,1.,.7))),0.),16.)*.3;
+      // Depth tint: deeper=darker+bluer
+      float depth=clamp(H*.8,0.,1.);
+      vec3 c=mix(uColor*.22, uColor*1.8+vec3(.02,.08,.18), s);
+      c=mix(c, uColor*.15+vec3(.0,.02,.08), depth*.4);
+      c+=pow(s,5.)*.38*vec3(.1,.44,.9)+pow(s,18.)*.75*vec3(.25,.65,1.);
+      c+=caust*(uChakra*.8+vec3(.06,.24,.48));
+      // Ripple highlights
+      float ripHL=clamp(rip*4.,0.,1.);
+      c+=ripHL*.12*vec3(.4,.8,1.)*uChakra;
+      // Infinity pool mirror band
+      float poolEdge=smoothstep(5.,8.,r)*smoothstep(12.,9.,r);
+      c=mix(c, uColor*3.+vec3(.08,.22,.38)*caust, poolEdge*.6);
+      float a=.93*(1.-smoothstep(36.,43.,r));
+      gl_FragColor=vec4(c,a);}`,
+  transparent:true,side:THREE.DoubleSide,depthWrite:false}));
+wSurf.rotation.x=-Math.PI/2;wSurf.position.y=.06;scene.add(wSurf);
+
+{const cB=new THREE.MeshBasicMaterial({color:0x00AACC,transparent:true});
+const rB=new THREE.MeshBasicMaterial({color:0x007799,transparent:true});
+for(let i=0;i<80;i++){const a=Math.random()*Math.PI*2,h=.5+Math.random()*22,r=36+Math.random()*8;const m=new THREE.Mesh(new THREE.OctahedronGeometry(.06+Math.random()*.28),cB.clone());m.material.opacity=.1+Math.random()*.28;m.position.set(Math.sin(a)*r*.86,h,Math.cos(a)*r*.86);scene.add(m)}
+for(let i=0;i<20;i++){const a=Math.random()*Math.PI*2,h=4+Math.random()*16,r=34+Math.random()*7;const m=new THREE.Mesh(new THREE.TorusGeometry(.45+Math.random()*.9,.04,6,32),rB.clone());m.material.opacity=.08+Math.random()*.18;m.position.set(Math.sin(a)*r*.83,h,Math.cos(a)*r*.83);m.lookAt(0,h,0);scene.add(m)}
+for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,r=39+Math.random()*4;for(let j=0;j<8;j++){const fm=new THREE.Mesh(new THREE.BoxGeometry(.04,.6,.04),new THREE.MeshBasicMaterial({color:0x003355,transparent:true,opacity:.22+Math.random()*.18}));fm.position.set(Math.sin(a)*r*.86,j*2.5+Math.random(),Math.cos(a)*r*.86);scene.add(fm)}}}
+
+const shimData=[];
+for(let i=0;i<24;i++){const a=Math.random()*Math.PI*2,r=3+Math.random()*26,rad=1.2+Math.random()*5,y=17+Math.random()*11;
+const mat=new THREE.MeshBasicMaterial({color:new THREE.Color().setHSL(.55+Math.random()*.08,.6,.35),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false});
+mat.opacity=.02+Math.random()*.07;
+const m=new THREE.Mesh(new THREE.CircleGeometry(rad,10),mat);m.position.set(Math.sin(a)*r,y,Math.cos(a)*r);m.rotation.x=Math.PI/2;scene.add(m);
+shimData.push({m,phase:Math.random()*Math.PI*2,speed:.22+Math.random()*.65,base:mat.opacity})}
+
+const islMat=new THREE.MeshStandardMaterial({color:0x1a1e28,roughness:.55,metalness:.28,emissive:new THREE.Color(0,0,0),emissiveIntensity:0});
+aM(new THREE.CylinderGeometry(5.5,6.1,5,28),islMat,0,-2.5,0,scene);
+[[5.2,5.5,.48,.28],[4.0,4.4,.48,.76],[2.95,3.25,.48,1.24],[2.1,2.5,.42,1.65]].forEach(([rt,rb,h,y])=>aM(new THREE.CylinderGeometry(rt,rb,h,28),islMat,0,y,0,scene));
+aM(new THREE.CylinderGeometry(1.82,2.12,.22,28),islMat,0,2.0,0,scene);
+{const r=new THREE.Mesh(new THREE.TorusGeometry(2.02,.07,8,52),new THREE.MeshStandardMaterial({color:0x242a38,roughness:.72,metalness:.22}));r.rotation.x=Math.PI/2;r.position.y=1.9;scene.add(r)}
+{const mM=new THREE.MeshBasicMaterial({color:0x00AACC,transparent:true,opacity:.2,blending:THREE.AdditiveBlending,depthWrite:false});
+[.33,.68,1.08,1.55].forEach(r=>{const ring=new THREE.Mesh(new THREE.TorusGeometry(r,.022,6,52),mM);ring.rotation.x=Math.PI/2;ring.position.y=2.03;scene.add(ring)});
+for(let i=0;i<12;i++){const a=(i/12)*Math.PI*2;const s=new THREE.Mesh(new THREE.BoxGeometry(.022,.02,1.6),mM);s.rotation.y=a;s.position.y=2.03;scene.add(s)}}
+
+const islandColMat=new THREE.MeshBasicMaterial({color:0x002255,transparent:true,opacity:.02,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+aM(new THREE.ConeGeometry(6.2,24,28,1,true),islandColMat,0,12,0,scene);
+{const sg=aM(new THREE.ConeGeometry(9,6,24,1,true),new THREE.MeshBasicMaterial({color:0x002244,transparent:true,opacity:.055,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),0,-2,0,scene);sg.rotation.x=Math.PI}
+{const r=new THREE.Mesh(new THREE.TorusGeometry(5.55,.12,8,64),new THREE.MeshBasicMaterial({color:0x0044AA,transparent:true,opacity:.28,blending:THREE.AdditiveBlending,depthWrite:false}));r.rotation.x=Math.PI/2;r.position.y=.1;scene.add(r)}
+const ERING=4;const eRings=[],eRingMats=[];
+for(let i=0;i<ERING;i++){const mat=new THREE.MeshBasicMaterial({color:0x003366,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});const m=new THREE.Mesh(new THREE.RingGeometry(.98,1.0,64),mat);m.rotation.x=-Math.PI/2;m.position.y=.08;scene.add(m);eRings.push(m);eRingMats.push(mat)}
+
+aM(new THREE.BoxGeometry(2.0,.1,2.0),new THREE.MeshStandardMaterial({color:0x1a224e,roughness:.88}),0,2.12,0,scene);
+{const z=new THREE.Mesh(new THREE.TorusGeometry(.72,.27,16,40),new THREE.MeshStandardMaterial({color:0x1c2e6e,roughness:.78}));z.rotation.x=Math.PI/2;z.position.set(0,2.36,0);scene.add(z)}
+aM(new THREE.CylinderGeometry(.45,.45,.08,24),new THREE.MeshStandardMaterial({color:0x1c2e6e,roughness:.78}),0,2.43,0,scene);
+const sM=new THREE.MeshStandardMaterial({color:0xb07840,roughness:.72});
+// figGrp: everything that should rotate with the figure when a pillar is selected
+const figGrp=new THREE.Group(); scene.add(figGrp);
+let figThTarget=0, figTh=0; // current and target Y rotation of the figure
+
+const figB=aM(new THREE.SphereGeometry(.32,12,10),sM,0,2.88,0,figGrp);figB.scale.y=1.48;
+aM(new THREE.SphereGeometry(.17,10,8),sM,0,3.44,0,figGrp);
+[-1,1].forEach(s=>{const a=aM(new THREE.SphereGeometry(.13,8,6),sM,s*.38,2.76,.1,figGrp);a.scale.set(1.75,.5,1.1);a.rotation.z=s*.52});
+const auM1=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
+const auM2=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
+const auR1=new THREE.Mesh(new THREE.TorusGeometry(1.88,.054,12,80),auM1);auR1.rotation.x=Math.PI/2;auR1.position.y=2.1;figGrp.add(auR1);
+const auR2=new THREE.Mesh(new THREE.TorusGeometry(2.78,.034,8,80),auM2);auR2.rotation.x=Math.PI/2;auR2.position.y=2.04;figGrp.add(auR2);
+const poolMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
+aM(new THREE.CircleGeometry(1.75,32),poolMat,0,2.03,0,figGrp).rotation.x=-Math.PI/2;
+// ── Platform pool light — sits just above island floor, casts chakra colour down ──
+const poolLight=new THREE.PointLight(0xffffff,0,14);
+poolLight.position.set(0,1.2,0); // just above platform surface
+scene.add(poolLight);
+const cLight=new THREE.PointLight(0xffffff,0,26);cLight.position.set(0,3.5,0);
+cLight.castShadow=true;
+cLight.shadow.mapSize.set(512,512);
+cLight.shadow.camera.near=0.1;
+cLight.shadow.camera.far=30;
+cLight.shadow.bias=-0.002;
+figGrp.add(cLight);
+const wGlow=new THREE.PointLight(0x002244,.55,28);wGlow.position.set(0,.3,0);figGrp.add(wGlow);
+
+// Shadow: figure casts, island receives
+figGrp.traverse(c=>{if(c.isMesh){c.castShadow=true;c.receiveShadow=true;}});
+// Island tiers receive shadow
+scene.traverse(c=>{if(c.isMesh&&c.material&&c.material.roughness>=0.7&&!c.material.transparent){c.receiveShadow=true;}});
+
+const MUDRA_R=3.85;
+const mudraGrps=[],mudraGMs=[];
+const dkMat=new THREE.MeshStandardMaterial({color:0x1a1e2c,roughness:.92});
+
+function buildMudraGeo(idx,grp){
+  const col=new THREE.Color(CK[idx].hex);
+  const gm=new THREE.MeshStandardMaterial({
+    color:new THREE.Color(col).multiplyScalar(.35),
+    emissive:col,emissiveIntensity:.08,roughness:.38,metalness:.1
+  });
+  mudraGMs.push(gm);
+  aM(new THREE.CylinderGeometry(.24,.28,.14,8),dkMat,0,.07,0,grp);
+  aM(new THREE.CylinderGeometry(.28,.24,.05,8),dkMat,0,.165,0,grp);
+  const p=.2;
+  switch(idx){
+    case 0:{
+      aM(new THREE.BoxGeometry(.32,.06,.26),dkMat,0,p,0,grp);
+      const tr=new THREE.Mesh(new THREE.TorusGeometry(.115,.028,8,20),gm);
+      tr.position.set(-.13,p+.32,0);tr.rotation.x=Math.PI/2;grp.add(tr);
+      [0,.1,.2].forEach((x,j)=>{const f=aM(new THREE.CylinderGeometry(.022,.017,.28,5),gm,x,p+.22,0,grp);f.rotation.z=-.04*j});
+      const th=aM(new THREE.CylinderGeometry(.022,.017,.18,5),gm,-.2,p+.19,0,grp);th.rotation.z=.75;
+      break;
+    }
+    case 1:{
+      aM(new THREE.CylinderGeometry(.28,.32,.06,24),dkMat,0,p,0,grp);
+      [-1,1].forEach(s=>{const arc=new THREE.Mesh(new THREE.TorusGeometry(.17,.027,8,24,Math.PI*1.12),gm);arc.position.set(s*.05,p+.32,0);arc.rotation.x=Math.PI/2;arc.rotation.z=s>0?-.28:.28;grp.add(arc)});
+      aM(new THREE.SphereGeometry(.055,8,7),gm,0,p+.32,0,grp);
+      break;
+    }
+    case 2:{
+      aM(new THREE.BoxGeometry(.32,.06,.26),dkMat,0,p,0,grp);
+      {const c=aM(new THREE.CylinderGeometry(.018,.013,.3,5),gm,-.09,p+.33,0,grp);c.rotation.z=.74}
+      {const c=aM(new THREE.CylinderGeometry(.018,.013,.3,5),gm,.09,p+.33,0,grp);c.rotation.z=-.74}
+      {const c=aM(new THREE.CylinderGeometry(.018,.013,.36,5),gm,0,p+.22,0,grp);c.rotation.z=Math.PI/2}
+      [[0,p+.47,0],[-.2,p+.21,0],[.2,p+.21,0]].forEach(([x,y,z])=>aM(new THREE.SphereGeometry(.038,6,5),gm,x,y,z,grp));
+      break;
+    }
+    case 3:{
+      [-1,1].forEach(s=>{
+        const h=aM(new THREE.BoxGeometry(.1,.33,.22),new THREE.MeshStandardMaterial({color:new THREE.Color(col).multiplyScalar(.28),emissive:col,emissiveIntensity:.08,roughness:.5}),s*.1,p+.24,0,grp);
+        h.rotation.z=s*.3;
+        mudraGMs.push(h.material);
+        for(let fi=0;fi<4;fi++){const fng=aM(new THREE.BoxGeometry(.018,.28,.016),gm,s*(.06+fi*.018),p+.3,-.08+fi*.04,grp);fng.rotation.z=s*.3}
+      });
+      aM(new THREE.SphereGeometry(.07,8,7),gm,0,p+.46,0,grp);
+      break;
+    }
+    case 4:{
+      aM(new THREE.BoxGeometry(.32,.06,.26),dkMat,0,p,0,grp);
+      [-.14,.06,.16].forEach(x=>aM(new THREE.CylinderGeometry(.02,.016,.26,5),gm,x,p+.2,0,grp));
+      const arc=new THREE.Mesh(new THREE.TorusGeometry(.13,.022,8,18,Math.PI*.7),gm);arc.position.set(-.03,p+.33,0);arc.rotation.x=Math.PI/2;arc.rotation.z=-.55;grp.add(arc);
+      const th=aM(new THREE.CylinderGeometry(.022,.016,.17,5),gm,.22,p+.15,0,grp);th.rotation.z=-.62;
+      aM(new THREE.SphereGeometry(.036,6,5),gm,.04,p+.22,0,grp);
+      break;
+    }
+    case 5:{
+      for(let j=0;j<5;j++){const a=(j/5)*Math.PI*2;const rx=Math.cos(a)*.15,rz=Math.sin(a)*.15;[-1,1].forEach(s=>{const f=aM(new THREE.CylinderGeometry(.018,.013,.22,5),gm,s*rx,p+.38,s*rz,grp);f.rotation.z=s*Math.cos(a)*.52;f.rotation.x=s*Math.sin(a)*.52})}
+      aM(new THREE.SphereGeometry(.068,8,7),gm,0,p+.38,0,grp);
+      break;
+    }
+    case 6:{
+      for(let j=0;j<8;j++){const a=(j/8)*Math.PI*2;const p2=aM(new THREE.SphereGeometry(.088,7,6),gm,Math.cos(a)*.21,p+.36,Math.sin(a)*.21,grp);p2.scale.set(.44,1.28,.54);p2.rotation.y=a;p2.rotation.x=-.32}
+      aM(new THREE.SphereGeometry(.068,8,7),gm,0,p+.36,0,grp);
+      [-.22,.22].forEach(x=>{const s=aM(new THREE.CylinderGeometry(.022,.017,.22,5),gm,x,p+.17,0,grp);s.rotation.z=x>0?-.22:.22});
+      break;
+    }
+  }
+}
+
+CK.forEach((ck,i)=>{
+  const ang=(i/N)*Math.PI*2;
+  const grp=new THREE.Group();
+  grp.position.set(Math.sin(ang)*MUDRA_R,.08,Math.cos(ang)*MUDRA_R);
+  grp.rotation.y=ang;
+  grp.scale.setScalar(1.22);
+  buildMudraGeo(i,grp);
+  scene.add(grp);
+  mudraGrps.push(grp);
+});
+
+function buildEarth(g){const m=new THREE.MeshStandardMaterial({color:0x2a1e14,roughness:.97,metalness:.01});aM(new THREE.BoxGeometry(4.4,.66,4.4),m,0,.33,0,g);aM(new THREE.BoxGeometry(3.75,.32,3.75),m,0,.83,0,g);[[3.22,3.0,1.63],[2.85,2.78,4.62],[2.52,2.5,7.4],[2.12,2.4,10.05]].forEach(([w,h,y])=>aM(new THREE.BoxGeometry(w,h,w),m,0,y,0,g));aM(new THREE.BoxGeometry(3.0,.46,3.0),m,0,11.65,0,g);for(let i=0;i<8;i++){const a=(i/8)*Math.PI*2;const mn=new THREE.Mesh(new THREE.BoxGeometry(.46,.88,.46),m);mn.position.set(Math.sin(a)*1.1,12.38,Math.cos(a)*1.1);g.add(mn)}aM(new THREE.BoxGeometry(3.55,.42,3.55),m,0,13.05,0,g)}
+function buildWater(g){const m=new THREE.MeshStandardMaterial({color:0x141e2c,roughness:.76,metalness:.14});const rm=new THREE.MeshStandardMaterial({color:0x1a3040,roughness:.68,metalness:.22});aM(new THREE.CylinderGeometry(2.6,3.05,.66,24),m,0,.33,0,g);const pts=[];for(let i=0;i<=34;i++){const t=i/34;pts.push(new THREE.Vector2(Math.max(.36,.94+.62*Math.sin(t*Math.PI*2.75)*Math.pow(1-t*.5,.55)),.66+t*11.65))}g.add(new THREE.Mesh(new THREE.LatheGeometry(pts,28),m));[3.1,6.7,10.3].forEach(y=>{const r=new THREE.Mesh(new THREE.TorusGeometry(1.08,.1,8,32),rm);r.rotation.x=Math.PI/2;r.position.set(0,y,0);g.add(r)});aM(new THREE.CylinderGeometry(1.92,1.52,.46,24),m,0,12.98,0,g);aM(new THREE.CylinderGeometry(2.28,1.92,.28,24),m,0,12.65,0,g)}
+function buildFire(g){const m=new THREE.MeshStandardMaterial({color:0x221009,roughness:.82,metalness:.04});aM(new THREE.CylinderGeometry(2.52,3.05,.66,12),m,0,.33,0,g);const pts=[];for(let i=0;i<=28;i++){const t=i/28;pts.push(new THREE.Vector2(1.88*Math.pow(1-t*.86,.52)+.36,.66+t*11.0))}g.add(new THREE.Mesh(new THREE.LatheGeometry(pts,14),m));aM(new THREE.BoxGeometry(3.1,.4,3.1),m,0,12.28,0,g);aM(new THREE.BoxGeometry(2.45,.28,2.45),m,0,12.72,0,g);aM(new THREE.ConeGeometry(.43,3.4,5),m,0,14.12,0,g);[Math.PI*2/3,Math.PI*4/3].forEach(a=>aM(new THREE.ConeGeometry(.29,2.3,5),m,Math.sin(a)*.72,13.45,Math.cos(a)*.72,g))}
+function buildAir(g){const m=new THREE.MeshStandardMaterial({color:0x141c16,roughness:.85});const cm=new THREE.MeshStandardMaterial({color:0x1c2820,roughness:.78,metalness:.14});aM(new THREE.CylinderGeometry(2.42,2.82,.62,24),m,0,.31,0,g);[[.9,.9],[.9,-.9],[-.9,.9],[-.9,-.9]].forEach(([ox,oz])=>aM(new THREE.CylinderGeometry(.21,.27,12,10),m,ox,6.62,oz,g));[2.8,6.5,10.2].forEach(y=>{const r=new THREE.Mesh(new THREE.TorusGeometry(1.26,.09,8,32),cm);r.rotation.x=Math.PI/2;r.position.set(0,y,0);g.add(r);[[.9,.9],[.9,-.9],[-.9,.9],[-.9,-.9]].forEach(([ox,oz])=>aM(new THREE.SphereGeometry(.1,6,5),cm,ox,y,oz,g))});{const r=new THREE.Mesh(new THREE.TorusGeometry(1.26,.09,8,32),cm);r.rotation.x=Math.PI/2;r.position.set(0,12.62,0);g.add(r)}aM(new THREE.CylinderGeometry(2.42,2.18,.2,24),m,0,13.05,0,g);{const r=new THREE.Mesh(new THREE.TorusGeometry(1.76,.11,8,32),cm);r.rotation.x=Math.PI/2;r.position.set(0,13.22,0);g.add(r)}}
+function buildSound(g){const m=new THREE.MeshStandardMaterial({color:0x0e1624,roughness:.72,metalness:.18});const rm=new THREE.MeshStandardMaterial({color:0x192840,roughness:.6,metalness:.36});aM(new THREE.CylinderGeometry(2.62,3.05,.66,24),m,0,.33,0,g);const bp=[[2.18,.66],[2.0,1.18],[1.58,2.2],[1.15,3.65],[.84,5.65],[.74,6.65],[.9,8.12],[1.12,9.62],[1.36,10.92],[1.62,12.08],[1.95,12.82]].map(([r,y])=>new THREE.Vector2(r,y));g.add(new THREE.Mesh(new THREE.LatheGeometry(bp,30),m));[3.8,7.2,10.5].forEach(y=>{const r=new THREE.Mesh(new THREE.TorusGeometry(1.04,.12,10,36),rm);r.rotation.x=Math.PI/2;r.position.set(0,y,0);g.add(r)});aM(new THREE.CylinderGeometry(2.22,1.95,.34,24),m,0,13.14,0,g)}
+function buildLight(g){const m=new THREE.MeshStandardMaterial({color:0x101028,roughness:.2,metalness:.28,flatShading:true});const fm=new THREE.MeshStandardMaterial({color:0x1c1c3c,roughness:.12,metalness:.38,transparent:true,opacity:.82,flatShading:true});aM(new THREE.CylinderGeometry(2.42,2.82,.66,8),m,0,.33,0,g);aM(new THREE.CylinderGeometry(1.92,2.42,.38,8),m,0,.9,0,g);aM(new THREE.CylinderGeometry(1.12,1.46,11.5,8),m,0,6.9,0,g);for(let lvl=0;lvl<3;lvl++){const yy=3.4+lvl*3.5;for(let i=0;i<8;i++){const a=(i/8)*Math.PI*2+lvl*.22;const f=aM(new THREE.TetrahedronGeometry(.2),fm,Math.sin(a)*1.3,yy,Math.cos(a)*1.3,g);f.rotation.y=a;f.rotation.x=.42}}aM(new THREE.CylinderGeometry(1.46,1.12,.56,8),m,0,12.9,0,g);aM(new THREE.CylinderGeometry(1.82,1.46,.38,8),m,0,13.22,0,g)}
+function buildCrown(g){const m=new THREE.MeshStandardMaterial({color:0x14102a,roughness:.78,metalness:.06});const am=new THREE.MeshStandardMaterial({color:0x201844,roughness:.65,metalness:.22});aM(new THREE.CylinderGeometry(2.82,3.22,.66,28),m,0,.33,0,g);aM(new THREE.CylinderGeometry(2.42,2.82,.38,28),m,0,.88,0,g);{const r=new THREE.Mesh(new THREE.TorusGeometry(2.52,.14,8,36),am);r.rotation.x=Math.PI/2;r.position.set(0,1.1,0);g.add(r)}const sp=[];for(let i=0;i<=28;i++){const t=i/28;sp.push(new THREE.Vector2(1.52*Math.pow(1-t,.43)+.44,1.08+t*11.2))}g.add(new THREE.Mesh(new THREE.LatheGeometry(sp,22),m));[3.4,5.4,7.4,9.4,10.9].forEach((y,j)=>{const r=2.2-j*.28;aM(new THREE.CylinderGeometry(r,r*1.07,.22,22),am,0,y,0,g)});aM(new THREE.CylinderGeometry(1.62,1.22,.38,22),m,0,12.28,0,g);for(let i=0;i<8;i++){const a=(i/8)*Math.PI*2;const p=aM(new THREE.SphereGeometry(.48,8,6),am,Math.sin(a)*1.26,12.88,Math.cos(a)*1.26,g);p.scale.set(.38,1.28,.68);p.rotation.y=a;p.rotation.x=-.5}aM(new THREE.CylinderGeometry(1.82,1.62,.28,22),m,0,13.14,0,g)}
+const builders=[buildEarth,buildWater,buildFire,buildAir,buildSound,buildLight,buildCrown];
+
+const pGrps=[],cMesh=[],angRays=[],atmRays=[],tLights=[],aLights=[],fMesh=[],fCore=[];
+const subGlows=[],wDiscMats=[],glowMesh=[];
+CK.forEach((ck,i)=>{
+  const ang=(i/N)*Math.PI*2,wx=Math.sin(ang)*OR,wz=Math.cos(ang)*OR;const col=new THREE.Color(ck.hex);
+  const grp=new THREE.Group();grp.position.set(wx,0,wz);grp.userData.idx=i;scene.add(grp);pGrps.push(grp);
+  builders[i](grp);
+  const mnt=new THREE.Mesh(new THREE.TorusGeometry(.62,.11,10,32),new THREE.MeshStandardMaterial({color:0x3a2e1c,metalness:.55,roughness:.55}));mnt.rotation.x=Math.PI/2;mnt.position.set(0,13.84,0);grp.add(mnt);
+  aM(new THREE.CylinderGeometry(.38,.48,.28,12),new THREE.MeshStandardMaterial({color:0x342a18,metalness:.5,roughness:.62}),0,13.66,0,grp);
+  const cryMat=new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:1.8,roughness:0.02,metalness:.55,transparent:true,opacity:.82,envMapIntensity:1.4});
+  // Fresnel rim — inject into existing MeshStandardMaterial fragment shader
+  // vViewPosition is already declared by MeshStandardMaterial — do NOT redeclare
+  cryMat.userData.rimCol=col.clone();
+  cryMat.onBeforeCompile=(shader)=>{
+    shader.uniforms.rimColor={value:cryMat.userData.rimCol};
+    shader.uniforms.rimPower={value:2.8};
+    shader.uniforms.rimIntensity={value:2.2};
+    // Only inject uniforms + emissive addition — vViewPosition already exists
+    shader.fragmentShader=shader.fragmentShader.replace(
+      '#include <emissivemap_fragment>',
+      `#include <emissivemap_fragment>
+      float rim=pow(1.0-max(0.0,dot(normalize(vNormal),normalize(vViewPosition))),rimPower);
+      totalEmissiveRadiance+=rimColor*rim*rimIntensity;`
+    );
+    shader.fragmentShader='uniform vec3 rimColor;\nuniform float rimPower;\nuniform float rimIntensity;\n'+shader.fragmentShader;
+    cryMat.userData.shader=shader;
+  };
+  const cry=aM(new THREE.OctahedronGeometry(.78,2),cryMat,0,14.72,0,grp);cry.scale.y=1.58;cMesh.push(cry);
+  // Glow halo — additive billboard sprite around crystal top
+  const glowSpr=new THREE.Mesh(
+    new THREE.PlaneGeometry(4.2,4.2),
+    new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.13,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide})
+  );
+  glowSpr.position.set(0,14.72,0);
+  glowSpr.userData.baseOpacity=0.13;
+  grp.add(glowSpr);
+  glowMesh.push(glowSpr);
+  aM(new THREE.SphereGeometry(1.22,14,10),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.09,blending:THREE.AdditiveBlending,depthWrite:false}),0,14.72,0,grp);
+  const dp=new THREE.PointLight(ck.hex,.38,10);dp.position.set(0,14.72,0);grp.add(dp);
+  const cryW=new THREE.Vector3(wx,14.72,wz),figC=new THREE.Vector3(0,2.6,0),rVec=cryW.clone().sub(figC),rLen=rVec.length(),rDir=rVec.normalize();
+  const aRay=new THREE.Mesh(new THREE.ConeGeometry(3.7,rLen,24,1,true),new THREE.MeshBasicMaterial({color:ck.hex,transparent:true,opacity:.055,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+  aRay.position.copy(cryW.clone().lerp(figC,.5));aRay.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),rDir);scene.add(aRay);angRays.push(aRay);
+  const cH=14.72;
+  const atmRay=aM(new THREE.ConeGeometry(6.4,cH,20,1,true),new THREE.MeshBasicMaterial({color:ck.hex,transparent:true,opacity:.024,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),0,cH/2,0,grp);atmRays.push(atmRay);
+  const al=new THREE.PointLight(ck.hex,0,58);al.position.set(wx,14.72,wz);scene.add(al);aLights.push(al);
+  const tx=-Math.sin(ang)*1.55,tz=-Math.cos(ang)*1.55;
+  const tMa=new THREE.MeshStandardMaterial({color:0x2a1a08,roughness:.9});
+  aM(new THREE.CylinderGeometry(.065,.1,.7,8),tMa,tx,13.9,tz,grp);
+  aM(new THREE.CylinderGeometry(.18,.12,.22,10,1,true),new THREE.MeshStandardMaterial({color:0x4a3010,metalness:.38,roughness:.72}),tx,14.3,tz,grp);
+  const fl=aM(new THREE.SphereGeometry(.22,8,7),new THREE.MeshBasicMaterial({color:0xFF8820,transparent:true,opacity:.88,blending:THREE.AdditiveBlending,depthWrite:false}),tx,14.54,tz,grp);fMesh.push(fl);
+  const fc=aM(new THREE.SphereGeometry(.1,8,6),new THREE.MeshBasicMaterial({color:0xFFFF99,transparent:true,opacity:.92,blending:THREE.AdditiveBlending,depthWrite:false}),tx,14.65,tz,grp);fCore.push(fc);
+  aM(new THREE.SphereGeometry(.44,8,6),new THREE.MeshBasicMaterial({color:0xFF6600,transparent:true,opacity:.1,blending:THREE.AdditiveBlending,depthWrite:false}),tx,14.54,tz,grp);
+  const tl=new THREE.PointLight(0xFF9933,2.9,15);tl.position.set(tx,14.65,tz);grp.add(tl);tLights.push(tl);
+  const sg=aM(new THREE.CylinderGeometry(.85,2.6,3,16,1,true),new THREE.MeshBasicMaterial({color:ck.hex,transparent:true,opacity:.042,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),wx,-1.5,wz,scene);subGlows.push(sg);
+  const wdm=new THREE.MeshBasicMaterial({color:ck.hex,transparent:true,opacity:.035,blending:THREE.AdditiveBlending,depthWrite:false});
+  const wd=new THREE.Mesh(new THREE.CircleGeometry(3.8,32),wdm);wd.rotation.x=-Math.PI/2;wd.position.set(wx,.07,wz);scene.add(wd);wDiscMats.push(wdm);
+});
+
+{const sm=new THREE.MeshStandardMaterial({color:0x0b0912,roughness:1});for(let i=0;i<44;i++){const a=Math.random()*Math.PI*2,r=4+Math.random()*34,h=1+Math.random()*9.5,rt=.1+Math.random()*.58;const m=new THREE.Mesh(new THREE.ConeGeometry(rt,h,6),sm);m.position.set(Math.sin(a)*r,29-h/2,Math.cos(a)*r);m.rotation.z=(Math.random()-.5)*.2;scene.add(m)}}
+
+const DRIP_N=38;const dripP=new Float32Array(DRIP_N*3),dripV=new Float32Array(DRIP_N);
+const dripBX=[],dripBY=[],dripBZ=[];
+for(let i=0;i<DRIP_N;i++){const a=Math.random()*Math.PI*2,r=3+Math.random()*32;dripBX.push(Math.sin(a)*r);dripBY.push(19+Math.random()*8);dripBZ.push(Math.cos(a)*r);dripP[i*3]=dripBX[i];dripP[i*3+1]=dripBY[i]-Math.random()*18;dripP[i*3+2]=dripBZ[i];dripV[i]=.04+Math.random()*.09}
+const dripGeo=new THREE.BufferGeometry(),dripAttr=new THREE.BufferAttribute(dripP,3);dripGeo.setAttribute('position',dripAttr);
+scene.add(new THREE.Points(dripGeo,new THREE.PointsMaterial({color:0xAADDFF,size:.055,transparent:true,opacity:.42,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true})));
+
+const WF_N=60;
+const wfData=[{x:28,z:8},{x:-18,z:22},{x:-26,z:-13},{x:8,z:-28},{x:22,z:18}];
+const wfAttrs=[],wfPosArr=[],wfVels=[];
+wfData.forEach(({x,z})=>{const pos=new Float32Array(WF_N*3),vel=new Float32Array(WF_N);for(let i=0;i<WF_N;i++){const a=Math.random()*Math.PI*2,r=Math.random()*.68;pos[i*3]=x+Math.cos(a)*r;pos[i*3+1]=Math.random()*24;pos[i*3+2]=z+Math.sin(a)*r;vel[i]=.09+Math.random()*.14}const geo=new THREE.BufferGeometry(),attr=new THREE.BufferAttribute(pos,3);geo.setAttribute('position',attr);scene.add(new THREE.Points(geo,new THREE.PointsMaterial({color:0x99CCFF,size:.07,transparent:true,opacity:.28,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true})));wfAttrs.push(attr);wfPosArr.push(pos);wfVels.push(vel);const wfl=new THREE.PointLight(0x44AADD,.55,9);wfl.position.set(x,.5,z);scene.add(wfl)});
+
+// ── Ember drift system — additive sparks rising from active pillar ────────
+const EMB_N=80; // particle count — mobile-safe budget
+const embPos=new Float32Array(EMB_N*3);
+const embVel=new Float32Array(EMB_N*3); // per-particle vx,vy,vz
+const embAge=new Float32Array(EMB_N);    // normalised 0→1 lifespan
+const embLife=new Float32Array(EMB_N);   // total life in seconds
+// Initialise all embers parked off-screen
+for(let i=0;i<EMB_N;i++){embPos[i*3]=0;embPos[i*3+1]=-999;embPos[i*3+2]=0;embAge[i]=1;}
+const embGeo=new THREE.BufferGeometry();
+const embAttr=new THREE.BufferAttribute(embPos,3);
+embGeo.setAttribute('position',embAttr);
+const embMat=new THREE.PointsMaterial({color:0xffffff,size:.18,transparent:true,opacity:.0,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true});
+const embPts=new THREE.Points(embGeo,embMat);
+scene.add(embPts);
+// Spawn helper — sets one ember at pillar base position
+function _spawnEmb(i,px,pz){
+  embPos[i*3]  =px+(Math.random()-.5)*1.2;
+  embPos[i*3+1]=.8+Math.random()*.8;
+  embPos[i*3+2]=pz+(Math.random()-.5)*1.2;
+  embVel[i*3]  =(Math.random()-.5)*.04;
+  embVel[i*3+1]=.06+Math.random()*.09;   // drift upward
+  embVel[i*3+2]=(Math.random()-.5)*.04;
+  embLife[i]   =1.4+Math.random()*1.2;
+  embAge[i]    =0;
+}
+
+const MIST_N=140;const mistPos=new Float32Array(MIST_N*3),mistVX=new Float32Array(MIST_N),mistVZ=new Float32Array(MIST_N);
+for(let i=0;i<MIST_N;i++){const a=Math.random()*Math.PI*2,r=Math.random()*36;mistPos[i*3]=Math.sin(a)*r;mistPos[i*3+1]=.1+Math.random()*2.2;mistPos[i*3+2]=Math.cos(a)*r;mistVX[i]=(Math.random()-.5)*.008;mistVZ[i]=(Math.random()-.5)*.008}
+const mGeo=new THREE.BufferGeometry(),mAttr=new THREE.BufferAttribute(mistPos,3);mGeo.setAttribute('position',mAttr);
+scene.add(new THREE.Points(mGeo,new THREE.PointsMaterial({color:0xAADDFF,size:.28,transparent:true,opacity:.065,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true})));
+
+const DN=320,dustP=new Float32Array(DN*3);
+for(let i=0;i<DN;i++){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*36;dustP[i*3]=Math.sin(a)*r;dustP[i*3+1]=Math.random()*26;dustP[i*3+2]=Math.cos(a)*r}
+const dGeo=new THREE.BufferGeometry(),dAttr=new THREE.BufferAttribute(dustP,3);dGeo.setAttribute('position',dAttr);
+scene.add(new THREE.Points(dGeo,new THREE.PointsMaterial({color:0xAABBCC,size:.042,transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true})));
+
+const ORB_COLS=[0x00CCAA,0x0066FF,0x0044CC,0x4422AA,0x00AADD,0x22CCAA,0x0055DD,0x2200AA];
+const orbGrps=[],orbRadius=[],orbAngle=[],orbY=[],orbPhase=[],orbAngSpd=[];
+for(let i=0;i<12;i++){const col=new THREE.Color(ORB_COLS[i%8]);const g=new THREE.Group();
+g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(.26+Math.random()*.12,7,6),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.11,blending:THREE.AdditiveBlending,depthWrite:false}))));
+g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(.08+Math.random()*.04,6,5),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.88}))));
+const r=5+Math.random()*28,a=Math.random()*Math.PI*2;g.position.set(Math.sin(a)*r,2+Math.random()*20,Math.cos(a)*r);scene.add(g);
+orbGrps.push(g);orbRadius.push(r);orbAngle.push(a);orbY.push(2+Math.random()*20);orbPhase.push(Math.random()*Math.PI*2);orbAngSpd.push((Math.random()-.5)*.006)}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PERLIN NOISE (JS) — for cave voxel density field
+// ═══════════════════════════════════════════════════════════════════════════════
+const _perm=(()=>{const p=new Uint8Array(512);for(let i=0;i<256;i++)p[i]=i;
+  for(let i=255;i>0;i--){const j=Math.random()*(i+1)|0;[p[i],p[j]]=[p[j],p[i]];}
+  for(let i=0;i<256;i++)p[256+i]=p[i];return p;})();
+function _fade(t){return t*t*t*(t*(t*6-15)+10);}
+function _lerp(a,b,t){return a+t*(b-a);}
+function _grad(h,x,y,z){h&=15;const u=h<8?x:y,v=h<4?y:h===12||h===14?x:z;return((h&1)?-u:u)+((h&2)?-v:v);}
+function perlin3(x,y,z){
+  const X=Math.floor(x)&255,Y=Math.floor(y)&255,Z=Math.floor(z)&255;
+  x-=Math.floor(x);y-=Math.floor(y);z-=Math.floor(z);
+  const u=_fade(x),v=_fade(y),w=_fade(z);
+  const A=_perm[X]+Y,AA=_perm[A]+Z,AB=_perm[A+1]+Z,B=_perm[X+1]+Y,BA=_perm[B]+Z,BB=_perm[B+1]+Z;
+  return _lerp(_lerp(_lerp(_grad(_perm[AA],x,y,z),_grad(_perm[BA],x-1,y,z),u),
+    _lerp(_grad(_perm[AB],x,y-1,z),_grad(_perm[BB],x-1,y-1,z),u),v),
+    _lerp(_lerp(_grad(_perm[AA+1],x,y,z-1),_grad(_perm[BA+1],x-1,y,z-1),u),
+    _lerp(_grad(_perm[AB+1],x,y-1,z-1),_grad(_perm[BB+1],x-1,y-1,z-1),u),v),w);}
+function fbmJS(x,y,z,oct=5){let v=0,a=.5,freq=1;
+  for(let i=0;i<oct;i++){v+=a*perlin3(x*freq,y*freq,z*freq);a*=.5;freq*=2.1;}return v;}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VOXEL CAVE — Geology + Fault + Walker + Chamber + Collapse pipeline (doc §1–§19)
+// Implements: strata hardness · fault weakness planes · biased erosion walkers ·
+// chamber expansion at fault intersections · ceiling collapse pass.
+// Core equation: cavity_prob = fracture × water_flow × solubility × time / hardness
+// ═══════════════════════════════════════════════════════════════════════════════
+(()=>{
+  const STEP=3.2, X0=-48,X1=48,Y0=-10,Y1=20,Z0=-48,Z1=48;
+  const THRESH=0.12;
+  const verts=[], norms=[], cols=[];
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const lerp=(a,b,t)=>a+(b-a)*t;
+
+  // ── §③ Geology pass ─ strata + solubility + base hardness ──────────────────
+  // strata: horizontal sine layers biased toward horizontal cave growth
+  const strata=(x,y,z)=>{
+    const warp=fbmJS(x*.03,0,z*.03,3)*4;
+    return Math.sin(y*0.38+warp)*0.5+0.5; // 0..1, peaks at strata boundaries
+  };
+  // hardness: granite-ish base, limestone pockets, sandstone bands
+  const hardness=(x,y,z)=>{
+    const s=strata(x,y,z);
+    const base=0.55;
+    const limestone=clamp(fbmJS(x*.05+11,y*.04,z*.05+7,4)*1.2,0,1); // high solubility
+    return base + s*0.25 - limestone*0.18; // 0.12..0.80
+  };
+  // solubility: limestone zones dissolve fastest
+  const solubility=(x,y,z)=>clamp(fbmJS(x*.06+3,y*.05+9,z*.06+1,3)*1.4,0.05,1.0);
+
+  // ── §④ Fault planes ─ 6 faults, each weakens rock nearby ──────────────────
+  const FAULTS=[
+    {o:[0,4,0],    n:[0.71,0.1,0.71]},   // diagonal NE
+    {o:[8,-2,8],   n:[-0.71,0.05,0.71]}, // diagonal NW
+    {o:[-12,2,5],  n:[0.5,0.2,-0.84]},   // oblique
+    {o:[5,6,-10],  n:[0.87,0.0,0.5]},    // near-vertical
+    {o:[0,0,0],    n:[0.0,0.15,1.0]},    // horizontal slab
+    {o:[-6,8,6],   n:[1.0,0.1,0.0]},     // axial
+  ];
+  const faultStrength=(x,y,z)=>{
+    let f=0;
+    for(const {o,n} of FAULTS){
+      const d=Math.abs((x-o[0])*n[0]+(y-o[1])*n[1]+(z-o[2])*n[2]);
+      f+=Math.exp(-d*d/36); // fault_width²=36
+    }
+    return clamp(f,0,1);
+  };
+
+  // ── §⑤+⑥ Biased erosion walkers ────────────────────────────────────────────
+  // Pre-compute erosion field: each walker carves a Gaussian corridor
+  // Walker flow: score = 0.45*prev_dir + 0.25*downhill + 0.20*fault_grad + 0.10*noise
+  const EROSION=new Float32Array(30*10*30); // 30×10×30 coarse grid
+  const EGX=30, EGY=10, EGZ=30;
+  const toIdx=(ix,iy,iz)=>clamp(iy,0,EGY-1)*EGX*EGZ+clamp(iz,0,EGZ-1)*EGX+clamp(ix,0,EGX-1);
+  const worldToGrid=(wx,wy,wz)=>[
+    Math.round((wx-X0)/(X1-X0)*(EGX-1)),
+    Math.round((wy-Y0)/(Y1-Y0)*(EGY-1)),
+    Math.round((wz-Z0)/(Z1-Z0)*(EGZ-1))
+  ];
+  const gridToWorld=(ix,iy,iz)=>[
+    X0+ix/(EGX-1)*(X1-X0),
+    Y0+iy/(EGY-1)*(Y1-Y0),
+    Z0+iz/(EGZ-1)*(Z1-Z0)
+  ];
+  // 12 walkers, each starting near the shell r=30..38
+  for(let w=0;w<12;w++){
+    const ang=w/12*Math.PI*2+fbmJS(w,0,0,1)*0.4;
+    const startR=30+fbmJS(w*3,1,0,2)*8;
+    let px=Math.cos(ang)*startR, py=6+fbmJS(w,5,0,2)*6, pz=Math.sin(ang)*startR;
+    let dx=0,dy=-0.3,dz=0; // initial: mostly downward
+    const sol=solubility(px,py,pz);
+    const maxSteps=55+Math.floor(fbmJS(w,2,w,1)*30);
+    for(let s=0;s<maxSteps;s++){
+      // Write erosion at this position
+      const [ix,iy,iz]=worldToGrid(px,py,pz);
+      const radius=2+fbmJS(px*.08,py*.1,pz*.08,2)*2.5;
+      for(let di=-2;di<=2;di++) for(let dj=-2;dj<=2;dj++) for(let dk=-2;dk<=2;dk++){
+        const ii=ix+di, ij=iy+dj, ik=iz+dk;
+        if(ii<0||ii>=EGX||ij<0||ij>=EGY||ik<0||ik>=EGZ) continue;
+        const [wx,wy,wz]=gridToWorld(ii,ij,ik);
+        const dist=Math.sqrt((wx-px)**2+(wy-py)**2+(wz-pz)**2);
+        const carve=Math.exp(-dist*dist/(radius*radius*2))*sol*0.85;
+        EROSION[toIdx(ii,ij,ik)]+=carve;
+      }
+      // Biased direction update (§⑭)
+      const fx=faultStrength(px+0.5,py,pz)-faultStrength(px-0.5,py,pz);
+      const fz=faultStrength(px,py,pz+0.5)-faultStrength(px,py,pz-0.5);
+      const nx2=dx*.45+0*.25+fx*.20+(fbmJS(px*.1,py*.1,pz*.1,1)-.5)*.20;
+      const ny2=dy*.45-0.25*.25+0*.20+(fbmJS(px*.1+9,py*.1,pz*.1,1)-.5)*.10;
+      const nz2=dz*.45+0*.25+fz*.20+(fbmJS(px*.1,py*.1,pz*.1+7,1)-.5)*.20;
+      const len=Math.sqrt(nx2*nx2+ny2*ny2+nz2*nz2)||1;
+      dx=nx2/len; dy=ny2/len; dz=nz2/len;
+      px+=dx*STEP; py+=dy*STEP; pz+=dz*STEP;
+      // Branch (§⑭ branch_chance≈0.03)
+      if(Math.random()<0.03 && s<maxSteps-8){
+        const ba=Math.random()*Math.PI*2;
+        const bpx=px+Math.cos(ba)*STEP*2, bpz=pz+Math.sin(ba)*STEP*2;
+        const [bix,biy,biz]=worldToGrid(bpx,py,bpz);
+        const br=2+Math.random()*2;
+        for(let di=-1;di<=1;di++) for(let dj=-1;dj<=1;dj++) for(let dk=-1;dk<=1;dk++){
+          const ii=bix+di,ij=biy+dj,ik=biz+dk;
+          if(ii>=0&&ii<EGX&&ij>=0&&ij<EGY&&ik>=0&&ik<EGZ)
+            EROSION[toIdx(ii,ij,ik)]+=0.4*sol;
+        }
+      }
+    }
+  }
+  // Normalise erosion field 0..1
+  let eMax=0; for(let i=0;i<EROSION.length;i++) if(EROSION[i]>eMax) eMax=EROSION[i];
+  if(eMax>0) for(let i=0;i<EROSION.length;i++) EROSION[i]/=eMax;
+
+  // ── §⑧ Chamber expansion ─ at fault intersections ──────────────────────────
+  const CHAMBERS=[]; // {x,y,z,r}
+  for(const f1 of FAULTS) for(const f2 of FAULTS){
+    if(f1===f2) continue;
+    // Approximate intersection: midpoint biased toward shell
+    const ang=Math.atan2(f1.o[2]-f2.o[2],f1.o[0]-f2.o[0]);
+    const r=28+Math.random()*8;
+    CHAMBERS.push({x:Math.cos(ang)*r,y:f1.o[1]*0.5+f2.o[1]*0.5,z:Math.sin(ang)*r,
+                   rad:5+Math.random()*7});
+  }
+  const chamberBoost=(x,y,z)=>{
+    let b=0;
+    for(const c of CHAMBERS){
+      const d2=(x-c.x)**2+(y-c.y)**2+(z-c.z)**2;
+      b+=Math.exp(-d2/(c.rad*c.rad*2))*0.7;
+    }
+    return clamp(b,0,0.8);
+  };
+
+  // ── §② Unified density field ────────────────────────────────────────────────
+  // D = R(x,y,z) − E(x,y,z)   (doc §②)
+  // cavity when D < THRESH → solid when D ≥ THRESH
+  const getErosion=(x,y,z)=>{
+    const [ix,iy,iz]=worldToGrid(x,y,z);
+    return EROSION[toIdx(ix,iy,iz)];
+  };
+  const density=(x,y,z)=>{
+    const r=Math.sqrt(x*x+z*z);
+    // Shell: cave exists between r=20..46
+    const shellMask=Math.max(0,1-Math.abs(r-33)/13);
+    const yMask=Math.max(0,1-Math.abs(y-4)/15);
+    if(shellMask<0.01||yMask<0.01) return 0; // outside world → air (not cave)
+
+    // Rock hardness (geology) minus erosion and chamber expansion
+    const H=hardness(x,y,z);
+    const F=faultStrength(x,y,z)*0.35;   // faults weaken rock
+    const E=getErosion(x,y,z)*0.60;       // walker erosion
+    const Ch=chamberBoost(x,y,z);         // chamber expansion
+    const noise_detail=fbmJS(x*.09+7,y*.07+3,z*.09+2,3)*0.12; // fine texture
+
+    const D=(H - F - E - Ch)*shellMask*yMask + noise_detail;
+    return D; // solid when > THRESH
+  };
+
+  // ── §⑨ Collapse pass ─ 1 iteration of ceiling instability ──────────────────
+  // Sample density above each voxel; if support low → air out the ceiling
+  // Implemented by subtracting from density when surrounded by air above
+  const densityWithCollapse=(x,y,z)=>{
+    const d=density(x,y,z);
+    if(d<THRESH) return d; // already air
+    // Count solid neighbors above and to sides
+    const s=STEP;
+    let support=0;
+    if(density(x,y+s,z)>THRESH) support++;
+    if(density(x+s,y,z)>THRESH) support++;
+    if(density(x-s,y,z)>THRESH) support++;
+    if(density(x,y,z+s)>THRESH) support++;
+    if(density(x,y,z-s)>THRESH) support++;
+    // If only 0-1 solid neighbors → collapse (subtract density)
+    if(support<2 && density(x,y-s,z)<THRESH){
+      return d - 0.10; // tip it toward air
+    }
+    return d;
+  };
+
+  // ── Face emitter (unchanged architecture) ───────────────────────────────────
+  const D2=(x,y,z)=>densityWithCollapse(x,y,z)>THRESH;
+  const pushFace=(ax,ay,az, bx,by,bz, cx,cy,cz, dx,dy,dz, nx,ny,nz)=>{
+    // Colour varies: geology strata tint + fault zone slightly warmer
+    const strataV=strata(ax,ay,az);
+    const faultV=faultStrength(ax,ay,az);
+    const h=0.57+strataV*.06+faultV*.04; // blue-grey to teal-grey
+    const s2=0.30+faultV*.15;
+    const l=0.08+strataV*.08+fbmJS(ax*.05,ay*.05,az*.05,2)*.06;
+    const c=new THREE.Color().setHSL(h,s2,l);
+    for(const [px,py,pz] of [[ax,ay,az],[bx,by,bz],[cx,cy,cz],[ax,ay,az],[cx,cy,cz],[dx,dy,dz]]){
+      verts.push(px,py,pz); norms.push(nx,ny,nz); cols.push(c.r,c.g,c.b);
+    }
+  };
+
+  for(let x=X0;x<X1;x+=STEP){
+    for(let y=Y0;y<Y1;y+=STEP){
+      for(let z=Z0;z<Z1;z+=STEP){
+        const s=STEP;
+        const c=D2(x,y,z);
+        if(!c&&D2(x+s,y,z)){pushFace(x+s,y,z,x+s,y+s,z,x+s,y+s,z+s,x+s,y,z+s,1,0,0);}
+        if(c&&!D2(x+s,y,z)){pushFace(x+s,y,z,x+s,y,z+s,x+s,y+s,z+s,x+s,y+s,z,-1,0,0);}
+        if(!c&&D2(x,y+s,z)){pushFace(x,y+s,z,x+s,y+s,z,x+s,y+s,z+s,x,y+s,z+s,0,1,0);}
+        if(c&&!D2(x,y+s,z)){pushFace(x,y+s,z,x,y+s,z+s,x+s,y+s,z+s,x+s,y+s,z,0,-1,0);}
+        if(!c&&D2(x,y,z+s)){pushFace(x,y,z+s,x,y+s,z+s,x+s,y+s,z+s,x+s,y,z+s,0,0,1);}
+        if(c&&!D2(x,y,z+s)){pushFace(x,y,z+s,x+s,y,z+s,x+s,y+s,z+s,x,y+s,z+s,0,0,-1);}
+      }
+    }
+  }
+
+  if(verts.length>0){
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(verts),3));
+    geo.setAttribute('normal',new THREE.BufferAttribute(new Float32Array(norms),3));
+    geo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(cols),3));
+    const mat=new THREE.MeshStandardMaterial({
+      vertexColors:true, roughness:.96, metalness:.04,
+      emissive:new THREE.Color(0x010a18), emissiveIntensity:.35,
+      side:THREE.BackSide
+    });
+    scene.add(new THREE.Mesh(geo,mat));
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GAUSSIAN SPLAT BIOLUMINESCENCE — oriented billboard quads with gaussian
+// opacity falloff. Simulates soft glowing bio-organisms on cave walls/ceiling.
+// ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
+// CAVE-LUX — Bioluminescent agent communication system (doc §1–§15)
+//
+// Each agent: {pos, facing, phase, flashRate, energy, state, backoff,
+//              intensity, hue, queue, seenMsgs, id}
+//
+// Light propagation: Ir = Ie * cos(θe)^p * cos(θr)^q / (d²+ε) * e^(-κd) * (1+ρB)
+// Pulse encoding: timing-based (short gap=0, long gap=1), SYNC+END markers
+// Synchronization: phase += couplingStrength*(1-phase) + jitter  (firefly-like)
+// Routing: glow-gossip — re-relay if TTL>0 and not seen before
+// Collision avoidance: listen-before-flash, exponential backoff window
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const CAVELUX_N = 48;          // agent count (perf budget)
+const CL_KAPPA  = 0.022;       // humidity absorption κ
+const CL_RHO    = 0.28;        // wall reflectance ρ
+const CL_P      = 2.0;         // emitter beam sharpness
+const CL_Q      = 1.5;         // receiver gain sharpness
+const CL_COUPLE = 0.04;        // firefly coupling strength
+const CL_SLOT   = 0.18;        // CSMA slot time (s)
+
+// BIOCOLS: [hue, saturation label] pairs — blue-green spectrum per §15
+const BIOCOLS_HSL=[
+  [0.48,0.9,0.55],[0.52,1.0,0.50],[0.42,0.85,0.58],
+  [0.62,0.8,0.52],[0.38,0.9,0.60],[0.56,0.95,0.48]
+];
+
+// Message type encoding per §3
+const CL_TYPE={BEACON:0,WARNING:1,ROUTE:2,SOCIAL:3};
+
+// ── Agent factory ────────────────────────────────────────────────────────────
+const clAgents=[];
+for(let i=0;i<CAVELUX_N;i++){
+  const ang=Math.random()*Math.PI*2;
+  const r=20+Math.random()*24;
+  const y=-4+Math.random()*22;
+  const hsl=BIOCOLS_HSL[i%BIOCOLS_HSL.length];
+  const col=new THREE.Color().setHSL(hsl[0],hsl[1],hsl[2]);
+  clAgents.push({
+    id:i,
+    pos:new THREE.Vector3(Math.sin(ang)*r,y,Math.cos(ang)*r),
+    facing:new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).normalize(),
+    phase:Math.random(),
+    flashRate:0.15+Math.random()*0.18,  // §6: each agent has own rate
+    energy:100,
+    intensity:0,          // current visible intensity (for GPU splat)
+    col,                  // THREE.Color
+    hue:hsl[0],
+    state:'idle',         // idle | transmitting | backoff
+    backoff:0,
+    backoffWindow:4,      // CSMA window W, doubles on collision
+    queue:[],             // outgoing message queue
+    seenMsgs:new Set(),   // gossip dedup
+    ttl:0,                // flash display timer
+  });
+}
+
+// ── Optical signal model §2 ──────────────────────────────────────────────────
+// Ir = Ie * cos(θe)^p * cos(θr)^q / (d²+ε) * e^(-κd) * (1+ρB)
+function clSignal(Ie, d, cosE, cosR, bounce=0.4){
+  const directional = Math.pow(Math.max(0,cosE), CL_P);
+  const gain        = Math.pow(Math.max(0,cosR), CL_Q);
+  const distLoss    = 1/(d*d + 0.001);
+  const absorb      = Math.exp(-CL_KAPPA*d);
+  const reflect     = 1 + CL_RHO*bounce;
+  return Ie * directional * gain * distLoss * absorb * reflect;
+}
+
+// ── Sense visible light for one agent §8 ────────────────────────────────────
+function clSense(rcv){
+  let total=0;
+  for(const em of clAgents){
+    if(em.id===rcv.id || em.intensity<0.001) continue;
+    const d=rcv.pos.distanceTo(em.pos);
+    if(d>38) continue;  // beyond cave range
+    const toRcv=new THREE.Vector3().subVectors(rcv.pos,em.pos).normalize();
+    const toEm =new THREE.Vector3().subVectors(em.pos,rcv.pos).normalize();
+    const cosE=em.facing.dot(toRcv);
+    const cosR=rcv.facing.dot(toEm);
+    const Ir=clSignal(em.intensity, d, cosE, cosR);
+    total+=Ir + (Math.random()-0.5)*0.002; // §8: noisy_intensity
+  }
+  return total;
+}
+
+// ── Encode bits to pulse pattern §4 ─────────────────────────────────────────
+function clEncode(bits){ return ['SYNC',...bits.map(b=>b?'L':'S'),'END']; }
+
+// ── CRC: simple XOR of bit array §3 ─────────────────────────────────────────
+function clCRC(bits){ return bits.reduce((a,b)=>a^b,0); }
+
+// ── Gossip relay §10 ─────────────────────────────────────────────────────────
+function clRelay(agent, msg){
+  if(agent.seenMsgs.has(msg.id)) return;
+  agent.seenMsgs.add(msg.id);
+  if(msg.ttl<=0) return;
+  const relayMsg={...msg, ttl:msg.ttl-1,
+    delay:0.12+Math.random()*0.18+msg.hop*0.04,  // §10 relay delay
+    hop:(msg.hop||0)+1};
+  agent.queue.push(relayMsg);
+}
+
+// ── Agent update §7 ──────────────────────────────────────────────────────────
+const CL_DT=1/60;
+function clUpdate(t){
+  for(const ag of clAgents){
+
+    // Phase tick §6
+    ag.phase += CL_DT * ag.flashRate;
+
+    // Sense environment §8
+    const visLight=clSense(ag);
+
+    // Firefly sync §6: phase += coupling*(1-phase) + jitter
+    if(visLight>0.008){
+      ag.phase += CL_COUPLE*(1-ag.phase);
+      ag.phase += (Math.random()-0.5)*0.018; // jitter prevents lockstep
+    }
+
+    // Decay intensity (visual TTL)
+    ag.intensity *= 0.88;
+
+    // Backoff countdown §5
+    if(ag.state==='backoff'){
+      ag.backoff-=CL_DT;
+      if(ag.backoff<=0) ag.state='idle';
+    }
+
+    // Transmit or beacon §7
+    if(ag.state==='idle'){
+      if(ag.queue.length>0){
+        const msg=ag.queue[0];
+        if(msg.delay&&msg.delay>0){ msg.delay-=CL_DT; }
+        else{
+          // Listen-before-flash §5
+          if(visLight>0.012){
+            // Channel busy — backoff
+            ag.backoff=Math.ceil(1+Math.random()*ag.backoffWindow)*CL_SLOT;
+            ag.backoffWindow=Math.min(ag.backoffWindow*2,64);
+            ag.state='backoff';
+          } else {
+            // Transmit
+            ag.queue.shift();
+            const Ie=msg.type===CL_TYPE.WARNING?1.0:
+                      msg.type===CL_TYPE.ROUTE?0.6:0.3; // §11 energy budget
+            ag.intensity=Ie*(0.9+Math.random()*0.1);
+            ag.energy-=Ie*0.8;
+            ag.backoffWindow=Math.max(4,ag.backoffWindow*0.5); // reset on success §5
+            ag.ttl=8;
+          }
+        }
+      } else if(ag.phase>=1.0){
+        // Beacon flash §6
+        ag.phase=Math.random()*0.08; // reset + jitter
+        ag.intensity=0.28+Math.random()*0.18;
+        ag.energy-=0.08;
+        ag.ttl=5;
+        // 12% chance of spawning a gossip route signal §10
+        if(Math.random()<0.12){
+          const msgId=ag.id*10000+Math.floor(t*100);
+          if(!ag.seenMsgs.has(msgId)){
+            ag.seenMsgs.add(msgId);
+            const bits=[1,0,1,1,0];
+            const payload=clEncode(bits);
+            const msg={id:msgId,type:CL_TYPE.ROUTE,sender:ag.id,
+              hop:0,ttl:3,payload,delay:0};
+            // Relay to nearby agents
+            for(const nb of clAgents){
+              if(nb.id!==ag.id && ag.pos.distanceTo(nb.pos)<18)
+                clRelay(nb,msg);
+            }
+          }
+        }
+      }
+    }
+
+    // Chakra activation: agents near active pillar emit WARNING bursts
+    if(window._clChakraPos){
+      const dist=ag.pos.distanceTo(window._clChakraPos);
+      if(dist<12 && Math.random()<0.08){
+        const warnId=ag.id*99999+Math.floor(t*50);
+        if(!ag.seenMsgs.has(warnId)){
+          ag.seenMsgs.add(warnId);
+          ag.queue.unshift({id:warnId,type:CL_TYPE.WARNING,
+            sender:ag.id,hop:0,ttl:4,
+            payload:clEncode([1,1,0,1]),delay:0});
+        }
+      }
+    }
+
+    // Clamp energy
+    ag.energy=Math.max(10,Math.min(100,ag.energy+CL_DT*0.5));
+  }
+}
+
+// ── GPU splat geometry — updated each frame from agent state ─────────────────
+const SPLAT_N=CAVELUX_N;
+const splatPositions=new Float32Array(SPLAT_N*3);
+const splatColors  =new Float32Array(SPLAT_N*3);
+const splatSizes   =new Float32Array(SPLAT_N);
+
+// Populate initial positions from agents
+clAgents.forEach((ag,i)=>{
+  splatPositions[i*3]  =ag.pos.x;
+  splatPositions[i*3+1]=ag.pos.y;
+  splatPositions[i*3+2]=ag.pos.z;
+  splatColors[i*3]  =ag.col.r;
+  splatColors[i*3+1]=ag.col.g;
+  splatColors[i*3+2]=ag.col.b;
+  splatSizes[i]=0.6+Math.random()*1.4;
+});
+
+const splatGeo=new THREE.BufferGeometry();
+// Use 'aColor' not 'color' — avoid collision with Three.js USE_COLOR attribute
+splatGeo.setAttribute('position',new THREE.BufferAttribute(splatPositions,3));
+splatGeo.setAttribute('aColor', new THREE.BufferAttribute(splatColors,3));
+splatGeo.setAttribute('aSize',  new THREE.BufferAttribute(splatSizes,1));
+const splatPosAttr =splatGeo.attributes.position;
+const splatColAttr =splatGeo.attributes.aColor;
+
+const splatUniforms={uTime:{value:0}};
+const splatMat=new THREE.ShaderMaterial({
+  uniforms:splatUniforms,
+  // 'aColor'/'aSize' — safe custom names, no Three.js builtin collision
+  vertexShader:`
+    attribute float aSize;
+    attribute vec3  aColor;
+    varying vec3  vCol;
+    varying float vIntensity;
+    uniform float uTime;
+    void main(){
+      // Intensity baked into color brightness (passed from JS each frame)
+      float bright=length(aColor);
+      vCol=aColor;
+      vIntensity=bright;
+      vec4 mv=modelViewMatrix*vec4(position,1.);
+      // Size scales with intensity and distance
+      gl_PointSize=aSize*(1.0+bright*2.2)*260./-mv.z;
+      gl_Position=projectionMatrix*mv;
+    }`,
+  fragmentShader:`
+    varying vec3  vCol;
+    varying float vIntensity;
+    void main(){
+      vec2 uv=gl_PointCoord*2.-1.;
+      float d=dot(uv,uv);
+      if(d>1.) discard;
+      // Gaussian splat §2: soft radial falloff (not hard circle)
+      float gauss=exp(-d*3.8);
+      // Halo ring — extra glow at ~0.6 radius like real bioluminescence
+      float halo=exp(-pow(d-.36,2.)*18.)*.35;
+      float alpha=(gauss+halo)*clamp(vIntensity*2.,0.,1.);
+      gl_FragColor=vec4(vCol,alpha);
+    }`,
+  transparent:true, depthWrite:false,
+  blending:THREE.AdditiveBlending
+});
+scene.add(new THREE.Points(splatGeo,splatMat));
+
+// Bioluminescent drip splashes — small gaussians at water surface
+const SPLASH_N=44;
+const splashPos=new Float32Array(SPLASH_N*3);
+const splashV=new Float32Array(SPLASH_N);
+const splashT=new Float32Array(SPLASH_N);
+for(let i=0;i<SPLASH_N;i++){
+  const a=Math.random()*Math.PI*2,r=10+Math.random()*32;
+  splashPos[i*3]=Math.sin(a)*r; splashPos[i*3+1]=0.1; splashPos[i*3+2]=Math.cos(a)*r;
+  splashV[i]=0.015+Math.random()*0.04;
+  splashT[i]=Math.random()*3.0;
+}
+const splashGeo=new THREE.BufferGeometry();
+const splashAttr=new THREE.BufferAttribute(splashPos,3);
+splashGeo.setAttribute('position',splashAttr);
+const splashMat=new THREE.PointsMaterial({
+  color:0x44EEBB,size:0.18,transparent:true,opacity:0.55,
+  blending:THREE.AdditiveBlending,depthWrite:false
+});
+scene.add(new THREE.Points(splashGeo,splashMat));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MERKABA — raymarched SDF billboard sprites
+//
+// Each merkaba = one PlaneGeometry billboard quad.
+// Fragment shader raymarches the star-tetrahedron SDF:
+//   sdMerkaba(p,rot) = min(sdTetra(p,r), sdTetra(Ry(π)*p, r))
+// with counter-rotating tetrahedra, edge glow, interior chroma, Fresnel rim.
+// No mesh geometry = no vertex count, no normal/wireframe artifacts.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const MERKABA_DEFS=[
+  {hue:0.00,r:1.0},{hue:0.33,r:1.2},{hue:0.55,r:1.1},
+  {hue:0.66,r:0.95},{hue:0.82,r:1.15}
+];
+
+// Merkaba raymarching shader — self-contained, no shared state
+const MERKABA_VERT=`
+  varying vec3 vWorldPos;
+  varying vec2 vUV;
+  void main(){
+    vUV=uv;
+    vec4 wp=modelMatrix*vec4(position,1.);
+    vWorldPos=wp.xyz;
+    gl_Position=projectionMatrix*viewMatrix*wp;
+  }`;
+
+const MERKABA_FRAG=`
+  uniform vec3  uCamPos;
+  uniform vec3  uCol;
+  uniform float uTime;
+  uniform float uGlow;
+  uniform float uSize;
+  varying vec3  vWorldPos;
+  varying vec2  vUV;
+
+  // ── SDF helpers ────────────────────────────────────────────────────────────
+  // Rotation matrix around Y axis
+  mat3 rotY(float a){float c=cos(a),s=sin(a);return mat3(c,0,s,0,1,0,-s,0,c);}
+  mat3 rotX(float a){float c=cos(a),s=sin(a);return mat3(1,0,0,0,c,-s,0,s,c);}
+
+  // SDF of a regular tetrahedron centred at origin, circumradius r
+  // Analytically: fold space using symmetry planes
+  float sdTetra(vec3 p, float r){
+    // Four symmetry planes of a tetrahedron
+    float md=max(max(-p.x-p.y-p.z,-p.x+p.y+p.z),max(p.x-p.y+p.z,p.x+p.y-p.z));
+    return (md-r)*0.57735; // 1/sqrt(3) normalisation
+  }
+
+  // Star-tetrahedron (merkaba) = union of tetrahedron + inverse tetrahedron
+  float sdMerkaba(vec3 p, float r, float rot){
+    vec3 pa=rotY(rot)*p;
+    vec3 pb=rotY(-rot)*rotX(3.14159)*p; // counter-rotate + flip
+    return min(sdTetra(pa,r), sdTetra(pb,r));
+  }
+
+  // ── Raymarcher ─────────────────────────────────────────────────────────────
+  void main(){
+    vec2 uv=vUV*2.-1.;
+    // Ray from camera through this billboard pixel
+    vec3 ro=uCamPos;
+    vec3 rd=normalize(vWorldPos-uCamPos);
+
+    float rot=uTime*.22;                // tetra counter-rotation speed
+    float r=uSize*.72;                  // SDF radius
+
+    // March along ray
+    float t=0., minD=1e9;
+    int steps=0;
+    for(int i=0;i<56;i++){
+      vec3 p=ro+rd*t;
+      // Local space: translate to billboard centre
+      p-=vWorldPos;
+      float d=sdMerkaba(p,r,rot);
+      minD=min(minD,abs(d));
+      if(d<0.008) break;
+      t+=max(d*.6,.005);
+      if(t>uSize*3.) break;
+      steps=i;
+    }
+
+    // Hit test
+    bool hit=(minD<0.018);
+
+    // Edge glow — strong near surface
+    float edgeGlow=exp(-minD*18.)*uGlow;
+    // Interior volumetric — soft fill inside SDF
+    float interior=exp(-minD*6.)*.4;
+    // Chromatic aberration: shift RGB slightly on axis
+    float chroma=sin(minD*22.+uTime*1.8)*.15+.85;
+    vec3 col=uCol*(edgeGlow+interior);
+    col.r*=chroma; col.b*=(2.-chroma);
+    // Fresnel-style rim from ray angle
+    float rim=pow(1.-abs(dot(normalize(vWorldPos-uCamPos),vec3(0,1,0))),3.)*.5;
+    col+=uCol*rim*uGlow;
+
+    // Discard fully transparent pixels
+    float alpha=(edgeGlow+interior*.6+rim*.3);
+    if(alpha<0.01) discard;
+    gl_FragColor=vec4(col,min(alpha,0.92));
+  }`;
+
+const merkabas=[];
+MERKABA_DEFS.forEach(({hue,r},i)=>{
+  const col=new THREE.Color().setHSL(hue,.92,.58);
+  const mU={
+    uCamPos:{value:new THREE.Vector3()},
+    uCol:{value:new THREE.Vector3(col.r,col.g,col.b)},
+    uTime:{value:0},
+    uGlow:{value:0.7},
+    uSize:{value:r*1.8},
+  };
+  // Billboard quad — size in world units matches SDF bounds
+  const quad=new THREE.Mesh(
+    new THREE.PlaneGeometry(r*4.2,r*4.2),
+    new THREE.ShaderMaterial({
+      uniforms:mU,
+      vertexShader:MERKABA_VERT,
+      fragmentShader:MERKABA_FRAG,
+      transparent:true, depthWrite:false,
+      blending:THREE.AdditiveBlending,
+      side:THREE.DoubleSide
+    })
+  );
+
+  // Point light — rides with the quad
+  const ml=new THREE.PointLight(col.getHex(),.7,7);
+  const grp=new THREE.Group();
+  grp.add(quad); grp.add(ml);
+
+  const ang=(i/MERKABA_DEFS.length)*Math.PI*2;
+  const dist=9+Math.random()*12;
+  grp.position.set(Math.sin(ang)*dist, 4+Math.random()*7, Math.cos(ang)*dist);
+  grp.userData={phase:Math.random()*Math.PI*2, speed:.18+Math.random()*.14,
+    baseY:grp.position.y, baseAng:ang, dist, hue, mU, ml, col};
+  scene.add(grp);
+  merkabas.push(grp);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INFINITY POOL RIM — glowing torus at island edge, mirrors water
+// ═══════════════════════════════════════════════════════════════════════════════
+{
+  const rimMat=new THREE.MeshStandardMaterial({
+    color:0x001e38, emissive:new THREE.Color(0x003366),
+    emissiveIntensity:0.6, roughness:0.08, metalness:0.92,
+    transparent:true, opacity:0.88
+  });
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(8.2,.08,8,128),rimMat);
+  rim.rotation.x=Math.PI/2; rim.position.y=0.07; scene.add(rim);
+
+  // Water-level mirror plane just inside the rim (raymarched look via shader)
+  const ipU={uTime:{value:0},uChakra:{value:new THREE.Color(0x002244)}};
+  const ipMesh=new THREE.Mesh(new THREE.RingGeometry(5.5,8.2,80,1),new THREE.ShaderMaterial({
+    uniforms:ipU,
+    vertexShader:`varying vec2 vUV;void main(){vUV=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+    fragmentShader:`
+      uniform float uTime;uniform vec3 uChakra;varying vec2 vUV;
+      vec3 _p3(vec3 p){p=fract(p*vec3(.1031,.1030,.0973));p+=dot(p,p.yxz+19.19);return fract((p.xxy+p.yxx)*p.zyx);}float _n(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);float a=dot(_p3(vec3(i,0.)).xy,f),b=dot(_p3(vec3(i+vec2(1,0),0.)).xy,f-vec2(1,0)),c=dot(_p3(vec3(i+vec2(0,1),0.)).xy,f-vec2(0,1)),d=dot(_p3(vec3(i+vec2(1,1),0.)).xy,f-vec2(1,1));return mix(mix(a,b,u.x),mix(c,d,u.x),u.y)*.5+.5;}float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*_n(p);p=p*2.1+vec2(3.1,7.3);a*=.5;}return v;}
+      void main(){
+        vec2 p=vUV*2.-1.;
+        float r=length(p);
+        float ripple=fbm(p*4.+vec2(uTime*.3,uTime*.2))*.5+.5;
+        float caust=pow(ripple,3.)*.6;
+        vec3 c=uChakra*1.8+vec3(.04,.12,.22)*caust;
+        c+=pow(caust,2.)*vec3(.2,.6,1.)*uChakra*2.;
+        float a=.78*(smoothstep(.0,.12,r))*(1.-smoothstep(.88,1.,r));
+        gl_FragColor=vec4(c,a);}`,
+    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    side:THREE.DoubleSide
+  }));
+  ipMesh.rotation.x=-Math.PI/2; ipMesh.position.y=0.08;
+  scene.add(ipMesh);
+  // expose for animate
+  window._ipU=ipU; window._rimMat=rimMat;
+}
+
+
+
+
+// Petal counts per classical tantra — declared here so both
+// buildPadma3D (3-D) and makePadmaSVG (2-D buttons) can use them.
+const PADMA_PETALS=[4,6,10,12,16,2,24];
+
+// ── 3-D CHAKRA PADMA / YANTRA — floats in front of viewer ───────────────────
+// Each yantra is a THREE.Group of flat MeshStandardMaterial geometry
+// so the chakra's point-light rakes across it with real shading.
+// The group lives in world-space; each frame we billboard it to face the cam
+// and place it 3.5 units in front of the camera at eye level.
+const padmaGrps=[];
+const PADMA_SCALE=3.2;  // crown-halo: fits over head, clear of mudra sculptures
+
+function buildPadma3D(idx){
+  const col = new THREE.Color(CK[idx].hex);
+  const n   = PADMA_PETALS[idx];
+  const grp = new THREE.Group();
+  const PR  = PADMA_SCALE;
+  const D   = PR * 0.06;
+
+  const mat  = ()=> new THREE.MeshStandardMaterial({
+    color:new THREE.Color(col).multiplyScalar(.30),
+    emissive:col, emissiveIntensity:.28, roughness:.28, metalness:.18,
+    envMapIntensity:.6
+  });
+  const wmat = ()=> new THREE.MeshStandardMaterial({
+    color:new THREE.Color(col).multiplyScalar(.7),
+    emissive:col, emissiveIntensity:.72, roughness:.12, metalness:.30,
+    envMapIntensity:.8
+  });
+
+  const EXT = (d)=>({
+    depth:d||D, bevelEnabled:true,
+    bevelThickness:D*.2, bevelSize:D*.12, bevelSegments:2
+  });
+
+  // ── ROTATION STRATEGY ──────────────────────────────────────────────────────
+  // All geometry is built in Three.js XY plane (Shape default).
+  // ExtrudeGeometry pushes it along +Z.
+  // We want everything lying FLAT (face pointing +Y) in world space.
+  //
+  // WRONG: mesh.rotation.x=-PI/2 then mesh.rotation.y=-a
+  //   → Euler XYZ applies Ry in the *already tilted local frame* after Rx.
+  //   → The Y-rotation spins around the wrong axis. Petals don't point radially.
+  //
+  // CORRECT: one flat wrapper group per petal ring.
+  //   wrapper.rotation.x = -PI/2   → lays the XY plane flat into world XZ
+  //   child.rotation.z   = a       → in wrapper's local XY, Z-rot = world Y-rot
+  //   child.position     = (cos(a)*r, sin(a)*r, 0)  → in wrapper local XY = world XZ
+  //
+  // For non-petal pieces (rings, disc, bars) that don't need radial rotation:
+  //   just mesh.rotation.x = -PI/2 is fine — they're radially symmetric.
+
+  const flatShape = (shapeObj, depth, m)=>{
+    const mesh=new THREE.Mesh(new THREE.ExtrudeGeometry(shapeObj, EXT(depth)), m());
+    mesh.rotation.x=-Math.PI/2;
+    return mesh;
+  };
+
+  const flatRing = (R, r, m)=>{
+    const s=new THREE.Shape(); s.absarc(0,0,R,0,Math.PI*2,false);
+    const h=new THREE.Path();  h.absarc(0,0,r,0,Math.PI*2,true); s.holes.push(h);
+    return flatShape(s, D, m);
+  };
+
+  const flatDisc = (r, m)=>{
+    const s=new THREE.Shape(); s.absarc(0,0,r,0,Math.PI*2,false);
+    return flatShape(s, D*.45, m);
+  };
+
+  // Almond: 1.6:1 ratio, long axis along X in XY plane.
+  // Two quadratic bezier curves — no arc angle math, no crossing arcs.
+  const almondShape = (pLen)=>{
+    const hl=pLen/2, hw=pLen/3.2;
+    const s=new THREE.Shape();
+    s.moveTo(-hl, 0);
+    s.quadraticCurveTo( 0,  hw,  hl, 0);
+    s.quadraticCurveTo( 0, -hw, -hl, 0);
+    s.closePath();
+    return s;
+  };
+
+  const flatBar = (len, thick, m)=>{
+    const hl=len/2, ht=thick/2;
+    const s=new THREE.Shape();
+    s.moveTo(-hl,-ht); s.lineTo(hl,-ht); s.lineTo(hl,ht); s.lineTo(-hl,ht); s.closePath();
+    return flatShape(s, D*.6, m);
+  };
+
+  const flatTri = (r, rot)=>{
+    const g=new THREE.Group();
+    for(let k=0;k<3;k++){
+      const a0=(k/3)*Math.PI*2+rot, a1=((k+1)/3)*Math.PI*2+rot;
+      const x0=Math.cos(a0)*r, y0=Math.sin(a0)*r;
+      const x1=Math.cos(a1)*r, y1=Math.sin(a1)*r;
+      const len=Math.sqrt((x1-x0)**2+(y1-y0)**2);
+      const b=flatBar(len, PR*.038, wmat);
+      // flatBar already has rotation.x=-PI/2 applied.
+      // To position and orient it we use a wrapper:
+      const wb=new THREE.Group();
+      wb.rotation.x=-Math.PI/2;
+      b.rotation.x=0;  // undo the flatBar rotation since wrapper handles it
+      b.rotation.z=-Math.atan2(y1-y0, x1-x0);
+      b.position.set((x0+x1)/2, (y0+y1)/2, 0);
+      wb.add(b); g.add(wb);
+    }
+    return g;
+  };
+
+  // Petal ring: n almond petals laid flat, each pointing radially outward.
+  // Uses wrapper group pattern to avoid Euler order issues.
+  const petalRing = (count, pLen, radius, aOff)=>{
+    // One wrapper for the whole ring — rotation.x=-PI/2 lays everything flat.
+    const ring=new THREE.Group();
+    ring.rotation.x=-Math.PI/2;
+    for(let i=0;i<count;i++){
+      const a=(i/count)*Math.PI*2+(aOff||0);
+      const mesh=new THREE.Mesh(
+        new THREE.ExtrudeGeometry(almondShape(pLen), EXT(D)),
+        mat()
+      );
+      // In ring's local XY: rotate around Z to point radially, position in XY.
+      mesh.rotation.z = a;              // Z-rot in wrapper = Y-rot in world ✓
+      mesh.position.set(Math.cos(a)*radius, Math.sin(a)*radius, 0);
+      ring.add(mesh);
+    }
+    grp.add(ring);
+  };
+
+  // ── BUILD ──────────────────────────────────────────────────────────────────
+  if(idx===5){
+    // AJNA — 2-petal eye (mandorla). Reference: two SOLID convex leaf shapes,
+    // top petal bulges up, bottom petal bulges down, tips meet left & right.
+    // Each petal = single outer bezier arc closed by a straight chord (lineTo).
+    // NO inner counter-arc — that was making it a crescent sliver.
+    // Aspect: wide 3:1. aL=PR*1.8 tip-to-tip, hw=PR*0.62 per half (fat but not semicircle).
+    //
+    // Wrapper XY → world XZ (rotation.x=-PI/2). Long axis along X.
+    const ajnaW=new THREE.Group();
+    ajnaW.rotation.x=-Math.PI/2;
+    const aL = PR * 1.8;   // total width tip-to-tip
+    const hl  = aL / 2;
+    const hw  = PR * 0.62; // height of each leaf half — fat solid leaf
+
+    // mkLeaf(sign): +1=top petal bulges +Y (world +Z), -1=bottom bulges -Y.
+    // Single outer bezier from left-tip to right-tip, closed straight back.
+    const mkLeaf = (sign) => {
+      const s = new THREE.Shape();
+      s.moveTo(-hl, 0);
+      // One cubic bezier sweeps to peak at centre. Control points pulled far
+      // outward (x: ±hl*0.35) so arc is round, not pointed at shoulders.
+      s.bezierCurveTo(
+        -hl * 0.35, sign * hw,   // cp1 — far out + full height
+         hl * 0.35, sign * hw,   // cp2 — mirror
+         hl, 0                   // right tip
+      );
+      // Close straight back along shared chord (y=0). No inner arc.
+      s.lineTo(-hl, 0);
+      s.closePath();
+      return s;
+    };
+
+    [1, -1].forEach(sign => {
+      const mesh = new THREE.Mesh(
+        new THREE.ExtrudeGeometry(mkLeaf(sign), EXT(D * 0.9)), mat());
+      ajnaW.add(mesh);
+    });
+    grp.add(ajnaW);
+
+    // Inner detail: ring + downward triangle + centre dot (all flat, at y=0).
+    grp.add(flatRing(PR * .30, PR * .20, wmat));
+    grp.add(flatTri(PR * .34, Math.PI));   // PI → apex points -Y (downward)
+    grp.add(flatDisc(PR * .07, wmat));
+  } else {
+    // Scale petal size inversely with count so every chakra looks like root.
+    // pLen = 0.52*PR * sqrt(4/n)  — root (n=4) stays at PR*0.52, others shrink gracefully.
+    // pOff = PR*0.74 - pLen/2     — outer tip always at ~PR*0.74 regardless of n.
+    const pLen = PR * 0.52 * Math.sqrt(4/n);
+    const pOff = PR * 0.74 - pLen/2;
+    petalRing(n, pLen, pOff, 0);
+
+    grp.add(flatRing(PR*.20, PR*.14, wmat));
+    grp.add(flatRing(PR*.84, PR*.79, mat));
+    grp.add(flatDisc(PR*.058, wmat));
+
+    if(idx===0){
+      // Earth square: 4 bars forming a square, using wrapper pattern
+      const sqW=new THREE.Group(); sqW.rotation.x=-Math.PI/2;
+      const s=PR*.57;
+      const C=[[s,s],[s,-s],[-s,-s],[-s,s]];
+      C.forEach((_,k)=>{
+        const [x0,y0]=C[k],[x1,y1]=C[(k+1)%4];
+        const len=Math.sqrt((x1-x0)**2+(y1-y0)**2);
+        const hl=len/2, ht=PR*.019;
+        const bs=new THREE.Shape();
+        bs.moveTo(-hl,-ht); bs.lineTo(hl,-ht); bs.lineTo(hl,ht); bs.lineTo(-hl,ht); bs.closePath();
+        const bm=new THREE.Mesh(new THREE.ExtrudeGeometry(bs,EXT(D*.6)), wmat());
+        bm.rotation.z=-Math.atan2(y1-y0,x1-x0);
+        bm.position.set((x0+x1)/2,(y0+y1)/2,0);
+        sqW.add(bm);
+      });
+      grp.add(sqW);
+    }
+    if(idx===2){ grp.add(flatTri(PR*.44, Math.PI/2)); }
+    if(idx===3){ grp.add(flatTri(PR*.42,0)); grp.add(flatTri(PR*.42,Math.PI)); }
+    if(idx===4){ grp.add(flatRing(PR*.40, PR*.34, wmat)); }
+    if(idx===6){
+      // Sahasrara: DOMED thousand-petaled lotus (Image 2).
+      // Inner rings sit HIGHER than outer rings — like a crown/dome shape.
+      // Each ring is a petalRing but wrapped in a group elevated on Y.
+      // Ring spec: [count, petalLen, radius, angularOffset, yElevation]
+      const rings=[
+        [ 8, PR*.30, PR*.14, 0,           PR*.32],
+        [12, PR*.28, PR*.28, Math.PI/12,  PR*.24],
+        [16, PR*.26, PR*.42, Math.PI/16,  PR*.16],
+        [20, PR*.24, PR*.56, Math.PI/20,  PR*.09],
+        [24, PR*.22, PR*.70, Math.PI/24,  PR*.03],
+        [28, PR*.20, PR*.83, Math.PI/28,  0     ],
+      ];
+      rings.forEach(([c,pL,rad,rot,yEl])=>{
+        const levelGrp=new THREE.Group();
+        levelGrp.position.y=yEl;
+        // petalRing adds directly to grp — we need it to add to levelGrp instead
+        // so rebuild inline:
+        const ring=new THREE.Group();
+        ring.rotation.x=-Math.PI/2;
+        for(let i=0;i<c;i++){
+          const a=(i/c)*Math.PI*2+rot;
+          const mesh=new THREE.Mesh(
+            new THREE.ExtrudeGeometry(almondShape(pL),EXT(D)), mat());
+          mesh.rotation.z=a;
+          mesh.position.set(Math.cos(a)*rad, Math.sin(a)*rad, 0);
+          ring.add(mesh);
+        }
+        levelGrp.add(ring);
+        grp.add(levelGrp);
+      });
+      grp.add(flatDisc(PR*.08, wmat));
+    }
+  }
+
+  grp.visible=false; figGrp.add(grp); return grp;
+}
+
+CK.forEach((_,i)=>padmaGrps.push(buildPadma3D(i)));
+
+// Dedicated point-light that travels with the padma for proper shading
+const padmaLight=new THREE.PointLight(0xffffff,0,12);
+figGrp.add(padmaLight);
+
+// ── PADMA / YANTRA SVG BUTTON ICONS ─────────────────────────────────────────
+// Petal counts follow classical tantric tradition:
+// Muladhara=4, Svadhisthana=6, Manipura=10, Anahata=12,
+// Vishuddha=16, Ajna=2 (wings/petals + bindu), Sahasrara=display as 24 dense
+function makePadmaSVG(idx){
+  const ck=CK[idx];
+  const n=PADMA_PETALS[idx];
+  const cx=50,cy=50,R=22,r=10,ir=7;
+  const c=ck.css;
+  let paths='';
+
+  if(idx===5){
+    // Ajna — two large wing-petals + centre circle + downward triangle (bindu)
+    // Left wing
+    paths+=`<path d="M50,50 C30,28 14,36 18,50 C14,64 30,72 50,50Z"
+      fill="none" stroke="${c}" stroke-width="1.4" opacity=".9"/>`;
+    // Right wing
+    paths+=`<path d="M50,50 C70,28 86,36 82,50 C86,64 70,72 50,50Z"
+      fill="none" stroke="${c}" stroke-width="1.4" opacity=".9"/>`;
+    // Centre circle
+    paths+=`<circle cx="50" cy="50" r="9" fill="none" stroke="${c}" stroke-width="1.2"/>`;
+    // Bindu dot
+    paths+=`<circle cx="50" cy="50" r="2.5" fill="${c}" opacity=".95"/>`;
+    // Downward triangle (trikona)
+    paths+=`<polygon points="50,42 58,56 42,56" fill="none" stroke="${c}" stroke-width="1"/>`;
+  } else {
+    // Standard lotus: N petals as elliptical lobes arranged radially
+    for(let i=0;i<n;i++){
+      const a=(i/n)*Math.PI*2 - Math.PI/2;
+      // Each petal: an ellipse centred between inner ring and outer ring
+      const pc=R*.62; // petal centre distance from origin
+      const px=cx+Math.cos(a)*pc, py=cy+Math.sin(a)*pc;
+      const pw=R*.38, ph=R*.58; // petal width / height in local coords
+      // Rotate the ellipse to point outward
+      const deg=(a*180/Math.PI)+90;
+      paths+=`<ellipse cx="${px.toFixed(1)}" cy="${py.toFixed(1)}"
+        rx="${pw.toFixed(1)}" ry="${ph.toFixed(1)}"
+        transform="rotate(${deg.toFixed(1)},${px.toFixed(1)},${py.toFixed(1)})"
+        fill="none" stroke="${c}" stroke-width="1.15" opacity=".88"/>`;
+    }
+    // Inner circle (pericarp)
+    paths+=`<circle cx="${cx}" cy="${cy}" r="${ir}" fill="none" stroke="${c}" stroke-width="1.1"/>`;
+    // Bindu (seed point)
+    paths+=`<circle cx="${cx}" cy="${cy}" r="2.2" fill="${c}" opacity=".9"/>`;
+    // For Solar Plexus (10 petals) add inner downward triangle
+    if(idx===2){
+      paths+=`<polygon points="50,41 58,55 42,55" fill="none" stroke="${c}" stroke-width=".9" opacity=".7"/>`;
+    }
+    // For Heart (12 petals) add Star of David (two triangles = air/vayu yantra)
+    if(idx===3){
+      paths+=`<polygon points="50,40 58,55 42,55" fill="none" stroke="${c}" stroke-width=".9" opacity=".7"/>`;
+      paths+=`<polygon points="50,60 58,45 42,45" fill="none" stroke="${c}" stroke-width=".9" opacity=".7"/>`;
+    }
+    // For Throat (16) add inner circle + downward triangle
+    if(idx===4){
+      paths+=`<circle cx="50" cy="50" r="13" fill="none" stroke="${c}" stroke-width=".8" opacity=".55"/>`;
+      paths+=`<polygon points="50,43 57,54 43,54" fill="none" stroke="${c}" stroke-width=".85" opacity=".65"/>`;
+    }
+    // For Crown — add concentric ring to suggest thousand petals
+    if(idx===6){
+      paths+=`<circle cx="50" cy="50" r="14" fill="none" stroke="${c}" stroke-width=".7" opacity=".4"/>`;
+      paths+=`<circle cx="50" cy="50" r="20" fill="none" stroke="${c}" stroke-width=".55" opacity=".28"/>`;
+    }
+  }
+  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"
+    style="filter:drop-shadow(0 0 4px ${c}88)">${paths}</svg>`;
+}
+
+// ── VIEW MODES ────────────────────────────────────────────────────────────────
+// 0=orbit  1=top-ortho  2=mudra
+// 0=orbit 1=top-ortho 2=mudra(head) 3=vr
+const VIEW_NAMES=['ORBIT','TOP','MUDRA','VR'];
+let viewMode=0;
+// Orthographic camera for top view
+const orthoSize=22;
+const camOrtho=new THREE.OrthographicCamera(
+  -orthoSize*cam.aspect, orthoSize*cam.aspect, orthoSize,-orthoSize,.1,280
+);
+camOrtho.position.set(0,52,0); camOrtho.lookAt(0,0,0);
+camOrtho.up.set(0,0,-1);
+
+let activeCam=cam; // starts on perspective
+
+function cycleView(){
+  viewMode=(viewMode+1)%4;
+  document.getElementById('vBtn').textContent=VIEW_NAMES[viewMode];
+  document.getElementById('hHint').textContent=
+    viewMode===0?'Click Pillar · Drag to Orbit · Scroll to Zoom · V = Cycle View':
+    viewMode===1?'Top orthographic · V = Cycle View':
+    viewMode===2?'Mudra View — seated inside the yantra · V = Cycle View':
+    'VR Mode — cardboard/headset · V = Exit';
+  if(viewMode===1){activeCam=camOrtho;}
+  else{activeCam=cam;
+    if(viewMode===0)reC(); // restore orbit
+  }
+}
+document.getElementById('vBtn').addEventListener('click',cycleView);
+window.addEventListener('keydown',e=>{if(e.key==='v'||e.key==='V')cycleView()});
+
+const btnsD=document.getElementById('btns');
+CK.forEach((ck,i)=>{
+  const b=document.createElement('div');
+  b.className='cbtn';
+  // Semi-transparent background so SVG strokes read clearly
+  b.style.cssText=`background:rgba(0,0,0,.55);box-shadow:0 0 16px ${ck.css}44;color:${ck.css};border-color:${ck.css}44`;
+  b.title=`${ck.name} · ${ck.mantra} · ${ck.freq}Hz`;
+  b.innerHTML=makePadmaSVG(i);
+  b.addEventListener('click',()=>activate(i));
+  btnsD.appendChild(b);
+});
+
+let aIdx=-1;
+const wTgts=CK.map(ck=>{const c=new THREE.Color(ck.hex);c.multiplyScalar(.12);return c});
+const wDef=new THREE.Color(0x002e4a);
+const tEl=document.getElementById('hTitle'),sEl=document.getElementById('hSub');
+function activate(idx){
+  if(aIdx===idx){deact();return}
+  aIdx=idx;
+  const ck=CK[idx];
+  // Snap camera to face this pillar from outside the ring.
+  // Pillar sits at angle (idx/7)*2PI from centre.
+  // Camera orbits to the opposite side: cThTarget = pillarAngle + PI.
+  // Pull in slightly and drop elevation for a more intimate view.
+  // CAVE-LUX: agents near this pillar emit WARNING flashes
+  {const _pa=(idx/7)*Math.PI*2;
+   window._clChakraPos=new THREE.Vector3(Math.sin(_pa)*OR,3,Math.cos(_pa)*OR);
+   setTimeout(()=>{window._clChakraPos=null;},4000);}
+  // Drop water impulse at pillar UV position on activation
+  if(window._waterSim){
+    const _pA=(idx/7)*Math.PI*2;
+    // Pillar world pos → UV: pillar at r=OR, map r=45 world → UV edge
+    const _ux=.5+Math.sin(_pA)*(OR/90.)*.9;
+    const _uz=.5+Math.cos(_pA)*(OR/90.)*.9;
+    window._waterSim.simMat.uniforms.uImpulse.value.set(_ux,_uz,.18);
+    setTimeout(()=>window._waterSim.simMat.uniforms.uImpulse.value.set(0,0,0),80);
+  }
+  const pillarAng = (idx/7)*Math.PI*2;
+  cThTarget = pillarAng + Math.PI;
+  cPhTarget = 0.52;
+  cRTarget  = 18;
+  // Rotate figure to face the pillar: figure Y rotation = pillarAng
+  // (figure faces the direction of the pillar, which is away from camera)
+  figThTarget = pillarAng;
+  tEl.textContent=`${ck.name.toUpperCase()} CHAKRA`;tEl.style.color=ck.css;
+  sEl.textContent=`${ck.sk}  ·  ${ck.freq}Hz  ·  ${ck.mudra} Mudra  ·  ${ck.mantra}`;
+  sEl.style.color=ck.css;
+  document.querySelectorAll('.cbtn').forEach((b,j)=>b.classList.toggle('on',j===idx));
+  aLights.forEach((l,j)=>l.intensity=j===idx?5.2:0);
+  auM1.color.set(ck.hex);auM2.color.set(ck.hex);poolMat.color.set(ck.hex);
+  cLight.color.set(ck.hex);wGlow.color.set(ck.hex);islandColMat.color.set(ck.hex);
+  poolLight.color.set(ck.hex);poolLight.intensity=3.8;
+  // Show padma for this chakra, hide others
+  padmaGrps.forEach((g,j)=>g.visible=(j===idx));
+  padmaLight.color.set(ck.hex);padmaLight.intensity=2.8;
+  if(sndOn){iA();playA(ck.freq,idx)}
+}
+function deact(){
+  aIdx=-1;
+  // Return to default orbit position
+  cThTarget=Math.PI; cPhTarget=.38; cRTarget=26;
+  figThTarget=0;  // figure returns to default facing
+  tEl.textContent='Sacred Chamber';tEl.style.color='#fff';
+  sEl.textContent='Select a crystal pillar to begin meditation';
+  sEl.style.color='rgba(180,210,255,.42)';
+  document.querySelectorAll('.cbtn').forEach(b=>b.classList.remove('on'));
+  aLights.forEach(l=>l.intensity=0);cLight.intensity=0;
+  poolLight.intensity=0;
+  wGlow.color.set(0x002244);islandColMat.color.set(0x002255);
+  padmaGrps.forEach(g=>g.visible=false);
+  padmaLight.intensity=0;
+  if(sndOn)stopA()
+}
+
+const rc=new THREE.Raycaster(),rcMN=new THREE.Vector2();
+const rcT=[];pGrps.forEach(g=>g.traverse(c=>{if(c.isMesh)rcT.push(c)}));
+const findG=o=>{while(o){if(pGrps.includes(o))return o;o=o.parent}return null};
+el.addEventListener('click',e=>{if(Math.abs(e.clientX-mDown[0])>8||Math.abs(e.clientY-mDown[1])>8)return;rcMN.set((e.clientX/innerWidth)*2-1,-(e.clientY/innerHeight)*2+1);rc.setFromCamera(rcMN,cam);const g=findG(rc.intersectObjects(rcT)[0]?.object);if(g)activate(g.userData.idx)});
+const tipEl=document.getElementById('tip');
+el.addEventListener('mousemove',e=>{if(drag){tipEl.style.display='none';return}rcMN.set((e.clientX/innerWidth)*2-1,-(e.clientY/innerHeight)*2+1);rc.setFromCamera(rcMN,cam);const g=findG(rc.intersectObjects(rcT)[0]?.object);if(g){const ck=CK[g.userData.idx];tipEl.textContent=`${ck.name}  ·  ${ck.mudra} Mudra  ·  ${ck.mantra}  ·  ${ck.freq}Hz`;tipEl.style.color=ck.css;tipEl.style.borderColor=ck.css+'44';tipEl.style.left=(e.clientX+16)+'px';tipEl.style.top=(e.clientY-22)+'px';tipEl.style.display='block';el.style.cursor='pointer'}else{tipEl.style.display='none';el.style.cursor='default'}});
+
+const clock=new THREE.Clock();
+// ── Audio FFT analyser (doc §③) ──────────────────────────────────────────
+let _analyser=null,_fft=null;
+const _audioState={bass:0,mid:0,high:0,sol:0};
+function _initAnalyser(){
+  if(_analyser||!actx)return;
+  _analyser=actx.createAnalyser();
+  _analyser.fftSize=2048;
+  _analyser.smoothingTimeConstant=0.82;
+  // Tap into destination — connect a passthrough gain to analyser
+  const tap=actx.createGain();tap.gain.value=0;
+  actx.destination.channelCount=actx.destination.maxChannelCount;
+  // We can't tap destination directly; attach analyser to context destination input
+  // via a silent side chain — just connect destination
+  try{actx.destination.connect&&void 0;}catch(e){}
+  // Simpler: analyser on a shared gain patched before each play call
+  _fft=new Uint8Array(_analyser.frequencyBinCount);
+  window._analyser=_analyser;
+}
+function _bandAvg(fa,fb){
+  if(!_analyser||!_fft)return 0;
+  const ny=actx.sampleRate/2;
+  const iA=Math.floor(fa/ny*_fft.length);
+  const iB=Math.floor(fb/ny*_fft.length);
+  let sum=0,count=0;
+  for(let i=iA;i<=iB;i++){sum+=_fft[i]/255;count++;}
+  return count?sum/count:0;
+}
+function _smth(old_,new_,a){return old_+(new_-old_)*a;}
+function _updateAudio(){
+  if(!_analyser){_initAnalyser();return;}
+  _analyser.getByteFrequencyData(_fft);
+  _audioState.bass=_smth(_audioState.bass,_bandAvg(20,160),0.10);
+  _audioState.mid =_smth(_audioState.mid, _bandAvg(160,1200),0.09);
+  _audioState.high=_smth(_audioState.high,_bandAvg(1200,8000),0.08);
+  const af=aIdx>=0?CK[aIdx].freq:528;
+  _audioState.sol=_smth(_audioState.sol,_bandAvg(af-8,af+8),0.12);
+}
+// ── Orb state for Bug-Fairy flight (doc §⑦) ──────────────────────────────
+const _orbState=[];  // populated first frame
+function _orbFairyInit(){
+  if(_orbState.length||!orbGrps.length)return;
+  orbGrps.forEach((g,i)=>{
+    _orbState.push({
+      pos:g.position.clone(),
+      vel:new THREE.Vector3(),
+      noise:new THREE.Vector3((Math.random()-.5),(Math.random()-.5),(Math.random()-.5)),
+      phase:orbPhase[i]||Math.random()*Math.PI*2,
+      baseR:orbRadius[i]||6,
+      baseY:orbY[i]||8,
+      baseAng:orbAngle[i]||0,
+      angSpd:orbAngSpd[i]||0.004,
+    });
+  });
+}
+function _orbFairyUpdate(dt,t){
+  if(!_orbState.length){_orbFairyInit();return;}
+  _orbState.forEach((od,i)=>{
+    const grp=orbGrps[i];
+    if(!grp)return;
+    const F=new THREE.Vector3();
+    // 1. Target orbit point
+    const r=od.baseR+Math.sin(t*.7+od.phase)*.6;
+    const a=od.baseAng+t*.012*od.angSpd*200;
+    const tgt=new THREE.Vector3(Math.cos(a)*r,od.baseY+Math.sin(t*1.3+od.phase)*.8,Math.sin(a)*r);
+    F.add(tgt.clone().sub(od.pos).multiplyScalar(0.55));
+    // 2. Attraction toward active chakra light
+    if(aIdx>=0&&aLights[aIdx]){
+      const toL=aLights[aIdx].position.clone().sub(od.pos);
+      const d2=Math.max(toL.lengthSq(),.5);
+      F.add(toL.normalize().multiplyScalar(0.30/d2));
+    }
+    // 3. Separation
+    _orbState.forEach((od2,j)=>{
+      if(i===j)return;
+      const away=od.pos.clone().sub(od2.pos);
+      const d=away.length();
+      if(d<1.4&&d>.001)F.add(away.normalize().multiplyScalar((1.4-d)*1.6));
+    });
+    // 4. Hover buoyancy
+    F.y+=Math.sin(t*2.0+od.phase)*.07;
+    // 5. Tangential curl
+    const rad=new THREE.Vector3(od.pos.x,0,od.pos.z);
+    const tang=new THREE.Vector3(-rad.z,0,rad.x);if(tang.length()>.01)tang.normalize();
+    F.add(tang.multiplyScalar(0.18));
+    // 6. Smooth noise
+    od.noise.lerp(new THREE.Vector3((Math.random()-.5),(Math.random()-.5),(Math.random()-.5)),.025);
+    F.add(od.noise.clone().multiplyScalar(0.28));
+    // 7. Audio high-freq shimmer
+    F.y+=(_audioState.high-.05)*0.15*Math.sin(t*8+od.phase);
+    // Integrate
+    od.vel.addScaledVector(F,dt);
+    od.vel.multiplyScalar(0.93);
+    od.vel.clampLength(0,2.2);
+    od.pos.addScaledVector(od.vel,dt);
+    grp.position.copy(od.pos);
+  });
+}
+// ── Drip impulse queue (doc §④) ──────────────────────────────────────────
+const _impQ=[];
+function _queueImpulse(uvx,uvz,amp){
+  _impQ.push({uvx,uvz,amp,life:1});
+}
+function _flushImpulse(){
+  if(!_impQ.length||!window._waterSim)return;
+  const imp=_impQ.shift();
+  // Fire impulse into water sim uImpulse uniform (x,z=UV, strength)
+  if(wU.uImpulse)wU.uImpulse.value.set(imp.uvx,imp.uvz,imp.amp);
+}
+function _worldToUV(wx,wz){
+  // Water plane spans approx -46..46; map to 0..1
+  const u=(wx+46)/92;const v=(wz+46)/92;
+  return {u:Math.min(Math.max(u,0),1),v:Math.min(Math.max(v,0),1)};
+}
+// ── Film grain JS init ────────────────────────────────────────────────────
+const grainCanvas=document.getElementById('grain');
+const grainCtx=grainCanvas?grainCanvas.getContext('2d'):null;
+const _initGrain=()=>{if(!grainCanvas)return;grainCanvas.width=Math.floor(innerWidth/2);grainCanvas.height=Math.floor(innerHeight/2);};
+_initGrain();
+const _drawGrain=()=>{
+  if(!grainCtx)return;
+  const w=grainCanvas.width,h=grainCanvas.height;
+  const img=grainCtx.createImageData(w,h);
+  for(let i=0;i<img.data.length;i+=4){const v=(Math.random()*255)|0;img.data[i]=img.data[i+1]=img.data[i+2]=v;img.data[i+3]=255;}
+  grainCtx.putImageData(img,0,0);
+};
+
+let _animFrame=0;
+(function animate(){
+  requestAnimationFrame(animate);
+  _animFrame++;
+  const _dt=Math.min(clock.getDelta(),0.05); // capped delta
+  const t=clock.getElapsedTime();
+  // ── CubeCamera IBL update (every 90 frames) ──────────────────────────
+  _updateCube(_animFrame);
+  // ── Film grain update (every 3 frames — subtle) ──────────────────────
+  if(_animFrame%3===0)_drawGrain();
+  // ── Caustics time uniform ─────────────────────────────────────────────
+  if(floorMat.userData.shader)floorMat.userData.shader.uniforms.uTime.value=t;
+  // ── Audio FFT update ─────────────────────────────────────────────────
+  _updateAudio();
+  // ── Figure breath cycle (doc §⑧) ─────────────────────────────────────
+  (()=>{
+    const period=4.8;
+    const b=0.5+0.5*Math.sin((t/period)*Math.PI*2-Math.PI/2);
+    const breath=b*b*(3.-2.*b); // smooth-step
+    figB.scale.y=THREE.MathUtils.lerp(1.48,1.58,breath);
+    figB.scale.x=THREE.MathUtils.lerp(1.00,1.025,breath);
+    figB.scale.z=THREE.MathUtils.lerp(1.00,1.035,breath);
+    // Aura rings breathe with figure
+    auM1.opacity=THREE.MathUtils.lerp(auM1.opacity,aIdx>=0?THREE.MathUtils.lerp(0.12,0.28,breath):0,.08);
+    auM2.opacity=THREE.MathUtils.lerp(auM2.opacity,aIdx>=0?THREE.MathUtils.lerp(0.06,0.14,breath):0,.08);
+  })();
+  ambL.intensity=.65+.08*Math.sin(t*.22);
+  if(aIdx>=0) poolLight.intensity=3.8*(0.88+0.12*Math.sin(t*1.4));
+  // ── GPU water sim step (all 4 passes + pressure Jacobi) ──────────────────
+  window._waterSim.step(t);
+  wU.uTime.value=t;dWU.uTime.value=t*.58;
+  wU.uColor.value.lerp(aIdx>=0?wTgts[aIdx]:wDef,.018);
+  // Chakra tint into water + infinity pool
+  const _ck=aIdx>=0?new THREE.Color(CK[aIdx].hex):new THREE.Color(0x002244);
+  wU.uChakra&&(wU.uChakra.value.lerp(_ck,.025));
+  if(window._ipU){window._ipU.uTime.value=t;window._ipU.uChakra.value.lerp(_ck,.025);}
+  if(window._rimMat){window._rimMat.emissive.lerp(_ck,.018);window._rimMat.emissiveIntensity=.5+.3*Math.sin(t*.8);}
+  // Gaussian splat bioluminescence pulse
+  // ── CAVE-LUX agent tick + GPU buffer sync ─────────────────────────────────
+  clUpdate(t);
+  clAgents.forEach((ag,i)=>{
+    // Write live intensity-scaled color to GPU buffer
+    const base=ag.col;
+    const I=ag.intensity;
+    splatColAttr.array[i*3]  =base.r*I;
+    splatColAttr.array[i*3+1]=base.g*I;
+    splatColAttr.array[i*3+2]=base.b*I;
+  });
+  splatColAttr.needsUpdate=true;
+  splatUniforms.uTime.value=t;
+  shimData.forEach(({m,phase,speed,base})=>m.material.opacity=base*(.5+.5*Math.sin(t*speed+phase)));
+  eRings.forEach((r,i)=>{
+    if(i===0 && aIdx>=0){
+      // First ring = chakra padma ring, vibrating at the active solfeggio freq.
+      // Map freq (396–963 Hz) to a visible pulse rate (1–4 Hz) by dividing.
+      const vizFreq=CK[aIdx].freq/220; // ~1.8–4.4 cycles/sec — perceptible
+      const vib=Math.sin(t*vizFreq*Math.PI*2);
+      // Ring breathes between scale 5.4 and 6.2 — sits just around the island
+      const sc=5.8+0.38*vib;
+      r.scale.set(sc,sc,1);
+      // Colour pulses to the chakra, opacity throbs with the vibration
+      eRingMats[0].color.set(CK[aIdx].hex);
+      eRingMats[0].opacity=0.22+0.14*Math.abs(vib);
+    } else {
+      // Rings 1–3 expand outward as before
+      const p=((t*.18+(i/ERING))%1);const sc=2+p*15;
+      r.scale.set(sc,sc,1);
+      eRingMats[i].opacity=(aIdx>=0?.14:.06)*(1-p)*(1-p);
+      if(aIdx>=0) eRingMats[i].color.set(CK[aIdx].hex);
+      else eRingMats[i].color.set(0x003366);
+    }
+  });
+  islandColMat.opacity=.018+.01*Math.sin(t*.45)+(aIdx>=0?.025+.015*Math.sin(t*4.):0);
+  tLights.forEach((l,i)=>l.intensity=2.9*(1+.38*Math.sin(t*8.8+i*2.3)+.16*Math.sin(t*17.2+i*3.7)));
+  fMesh.forEach((f,i)=>{const s=.72+.44*Math.sin(t*9.5+i*2.9)+.18*Math.sin(t*18.1+i*1.4);f.scale.setScalar(s);f.position.y=14.54+.11*Math.sin(t*12.2+i*3.1)});
+  fCore.forEach((f,i)=>f.position.y=14.65+.12*Math.sin(t*13.6+i*2.2));
+  cMesh.forEach((c,i)=>{c.rotation.y=t*.44+(i/N)*Math.PI*2;c.material.emissiveIntensity=i===aIdx?2.8*(1+.4*Math.sin(t*4.)):(.58+.22*Math.sin(t*.82+i*.95))});
+  // Glow halos — face camera, pulse on active
+  glowMesh.forEach((g,i)=>{
+    g.quaternion.copy(cam.quaternion);
+    const isAct=i===aIdx;
+    const pulse=Math.sin(t*3.5+i);
+    const sc=isAct?1.0+0.18*pulse:0.72+0.06*Math.sin(t*.7+i);
+    g.scale.setScalar(sc);
+    g.material.opacity=isAct?0.22+0.10*Math.abs(pulse):0.06+0.02*Math.sin(t*.5+i);
+  });
+  angRays.forEach((r,i)=>r.material.opacity=i===aIdx?.15+.08*Math.sin(t*4.):.052+.018*Math.sin(t*.6+i*.82));
+  atmRays.forEach((r,i)=>r.material.opacity=i===aIdx?.045+.022*Math.sin(t*4.):.02+.008*Math.sin(t*.5+i*.7));
+  subGlows.forEach((g,i)=>g.material.opacity=i===aIdx?.12+.06*Math.sin(t*4.):.038+.012*Math.sin(t*.6+i*.8));
+  wDiscMats.forEach((m,i)=>m.opacity=i===aIdx?.1+.05*Math.sin(t*4.):.032+.01*Math.sin(t*.5+i*.7));
+  mudraGrps.forEach((grp,i)=>{
+    const isAct=i===aIdx;const pulse=Math.sin(t*3.8);
+    grp.position.y=.08+(isAct?.18+.06*Math.abs(pulse):0);
+    grp.traverse(c=>{if(!c.isMesh||!c.material||c.material.isMeshBasicMaterial)return;const targetEI=isAct?.55+.35*Math.abs(pulse):.07;c.material.emissiveIntensity+=(targetEI-c.material.emissiveIntensity)*.1});
+  });
+
+  // ── Merkaba: Bug-Fairy flight (§7-§9) + SDF shader uniforms ────────────────
+  merkabas.forEach((grp,i)=>{
+    const ud=grp.userData;
+    if(!ud.vel){ ud.vel=new THREE.Vector3(); ud.acc=new THREE.Vector3(); }
+    const {phase,speed,baseY,baseAng,dist,hue,mU,ml,col}=ud;
+    const dt2=1/60;
+
+    // §7 wing velocity + §ω² physical+magic lift
+    const freq=18+Math.sin(t*3.+phase)*2.;
+    const strokeAmp=1.1+Math.sin(t*5.+phase)*.08;
+    const vWing=2*Math.PI*freq*.22*strokeAmp;
+    const physLift=.5*1.225*vWing*vWing*.18*1.8;
+    const weight=0.35*9.81;
+    const liftNet=(physLift+weight*.35-weight)*0.00035;
+
+    // §6 four forces
+    const wx=Math.sin(t*.7+phase*1.3)*.014+Math.sin(t*1.1+phase*.7)*.006;
+    const wz=Math.cos(t*.9+phase*1.7)*.014+Math.cos(t*1.3+phase*.5)*.006;
+    const wy=Math.sin(t*4.+phase)*.005+liftNet;
+    const tx2=Math.sin(baseAng+t*.012*speed)*dist;
+    const tz2=Math.cos(baseAng+t*.012*speed)*dist;
+    const toX=(tx2-grp.position.x)*.010;
+    const toZ=(tz2-grp.position.z)*.010;
+    const toY=(baseY-grp.position.y)*.007+wy;
+    const pr=Math.sqrt(grp.position.x**2+grp.position.z**2);
+    const avX=pr<7?grp.position.x/Math.max(pr,.1)*.03:0;
+    const avZ=pr<7?grp.position.z/Math.max(pr,.1)*.03:0;
+
+    // §ω7 Euler
+    ud.acc.set(toX+wx+avX, toY, toZ+wz+avZ);
+    ud.vel.addScaledVector(ud.acc,dt2);
+    ud.vel.multiplyScalar(.90);
+    grp.position.addScaledVector(ud.vel,dt2*60);
+
+    // §9 glow model
+    const spd=ud.vel.length()*60;
+    const slowPulse=.5+.5*Math.sin(t*2.2+phase);
+    const flicker=Math.sin(t*12.+phase*3.)*.10;
+    const speedGlow=Math.min(spd/.06,1.)*.28;
+    const glow=Math.min(slowPulse+flicker+speedGlow,1.);
+
+    // Billboard: always face camera (important for SDF quads)
+    grp.quaternion.copy(cam.quaternion);
+
+    // Update SDF shader uniforms
+    if(mU){
+      mU.uTime.value=t;
+      mU.uGlow.value=glow*(aIdx>=0?.95:.55);
+      mU.uCamPos.value.copy(cam.position);
+      // Chakra colour tint when active
+      if(aIdx>=0){
+        const ckc=new THREE.Color(CK[aIdx].hex);
+        mU.uCol.value.set(
+          col.r*.6+ckc.r*.4,
+          col.g*.6+ckc.g*.4,
+          col.b*.6+ckc.b*.4
+        );
+      } else {
+        mU.uCol.value.set(col.r,col.g,col.b);
+      }
+    }
+    // Point light
+    if(ml){
+      ml.intensity=glow*(aIdx>=0?1.1:.38);
+      ml.color.setHSL(hue+speedGlow*.08,.9,.55+glow*.12);
+    }
+  });
+  // Bioluminescent drip splashes — bob at surface
+  for(let i=0;i<SPLASH_N;i++){
+    splashT[i]+=splashV[i];
+    if(splashT[i]>3.0){
+      const a=Math.random()*Math.PI*2,r=10+Math.random()*32;
+      splashPos[i*3]=Math.sin(a)*r; splashPos[i*3+1]=.08; splashPos[i*3+2]=Math.cos(a)*r;
+      splashT[i]=0;
+    }
+    splashPos[i*3+1]=.08+Math.sin(splashT[i]*6.)*Math.max(0,.3-splashT[i]*.15)*.4;
+  }
+  splashAttr.needsUpdate=true;
+  _orbFairyUpdate(_dt,t); // Bug-Fairy flight replaces naive orbit (doc §⑦)
+  if(aIdx>=0){
+    const ck=CK[aIdx],pulse=Math.sin(t*4.);
+    aLights[aIdx].intensity=5.2*(1+.44*pulse);cLight.intensity=2.1*(1+.42*pulse);wGlow.intensity=.68+.32*Math.abs(pulse);
+    poolMat.opacity=.22+.12*Math.abs(pulse);auM1.opacity=.3+.18*pulse;auM2.opacity=.14+.08*Math.sin(t*4.+.65);
+    islMat.emissive.set(ck.hex);islMat.emissiveIntensity=.07+.05*Math.sin(t*Math.PI*2*(1+3*(ck.freq-396)/567));
+    auR1.rotation.z=t*.12;auR2.rotation.z=-t*.09;
+  } else {
+    islMat.emissiveIntensity=Math.max(0,islMat.emissiveIntensity*.93);
+    poolMat.opacity=Math.max(0,poolMat.opacity*.92);
+    auM1.opacity=Math.max(0,auM1.opacity*.9);auM2.opacity=Math.max(0,auM2.opacity*.9);
+    cLight.intensity=Math.max(0,cLight.intensity*.92);wGlow.intensity=Math.max(.55,wGlow.intensity*.96);
+  }
+  wfPosArr.forEach((pos,wi)=>{const vel=wfVels[wi];const{x,z}=wfData[wi];for(let i=0;i<WF_N;i++){pos[i*3+1]-=vel[i];if(pos[i*3+1]<.04){const a=Math.random()*Math.PI*2,r=Math.random()*.68;pos[i*3]=x+Math.cos(a)*r;pos[i*3+1]=20+Math.random()*5;pos[i*3+2]=z+Math.sin(a)*r}}wfAttrs[wi].needsUpdate=true});
+
+  // ── Ember drift update ────────────────────────────────────────────────────
+  if(aIdx>=0){
+    const _pa=(aIdx/7)*Math.PI*2;
+    const _px=Math.sin(_pa)*OR, _pz=Math.cos(_pa)*OR;
+    embMat.color.set(CK[aIdx].hex);
+    embMat.opacity=.72;
+    // Spawn ~2 new embers per frame from dead pool
+    let spawned=0;
+    for(let i=0;i<EMB_N&&spawned<2;i++){if(embAge[i]>=1){_spawnEmb(i,_px,_pz);spawned++;}}
+    // Advance all live embers
+    for(let i=0;i<EMB_N;i++){
+      if(embAge[i]>=1)continue;
+      const dt2=0.016; // fixed step ~60fps
+      embPos[i*3]  +=embVel[i*3]*dt2*60;
+      embPos[i*3+1]+=embVel[i*3+1]*dt2*60;
+      embPos[i*3+2]+=embVel[i*3+2]*dt2*60;
+      embVel[i*3]  *=0.98; // gentle drag
+      embVel[i*3+2]*=0.98;
+      embAge[i]=Math.min(1,embAge[i]+(dt2/embLife[i]));
+      // Park spent embers
+      if(embAge[i]>=1){embPos[i*3+1]=-999;}
+    }
+  } else {
+    embMat.opacity=0;
+    for(let i=0;i<EMB_N;i++){embAge[i]=1;embPos[i*3+1]=-999;}
+  }
+  embAttr.needsUpdate=true;
+  for(let i=0;i<DRIP_N;i++){dripP[i*3+1]-=dripV[i];if(dripP[i*3+1]<.05){
+    // Drip hit water — queue impulse (doc §④)
+    const _uv=_worldToUV(dripP[i*3],dripP[i*3+2]);
+    _queueImpulse(_uv.u,_uv.v,0.04+Math.random()*0.03);
+    dripP[i*3]=dripBX[i]+(Math.random()-.5)*.4;dripP[i*3+1]=dripBY[i];dripP[i*3+2]=dripBZ[i]+(Math.random()-.5)*.4;
+  }}
+  _flushImpulse(); // write one impulse per frame into GPU water sim
+  dripAttr.needsUpdate=true;
+  for(let i=0;i<MIST_N;i++){mistPos[i*3]+=mistVX[i];mistPos[i*3+1]+=.0025;mistPos[i*3+2]+=mistVZ[i];if(mistPos[i*3+1]>4.||Math.abs(mistPos[i*3])>40||Math.abs(mistPos[i*3+2])>40){const a=Math.random()*Math.PI*2,r=2+Math.random()*32;mistPos[i*3]=Math.sin(a)*r;mistPos[i*3+1]=.08;mistPos[i*3+2]=Math.cos(a)*r;mistVX[i]=(Math.random()-.5)*.008;mistVZ[i]=(Math.random()-.5)*.008}}
+  mAttr.needsUpdate=true;
+  for(let i=0;i<DN;i++){dustP[i*3+1]+=.0034;if(dustP[i*3+1]>26)dustP[i*3+1]=0}dAttr.needsUpdate=true;
+  if(!drag){cThTarget+=.00015;reC()}
+  // Smoothly rotate figure toward its target pillar
+  figTh+=(figThTarget-figTh)*.055;
+  figGrp.rotation.y=figTh;
+
+  // ── PADMA placement ──────────────────────────────────────────────────────
+  // The yantra always lives in world-space anchored to the figure,
+  // never relative to the camera — that's what caused the z-clipping.
+  //
+  // Fixed position:  (0, 5.2, 1.8)  — two feet above the figure's head,
+  //                                    one foot toward the viewer along Z.
+  // Fixed rotation:  -25° on X so it faces slightly downward toward
+  //                  the seated meditator from the viewer's perspective.
+  // In MUDRA mode the camera orbits closer so the symbol reads large;
+  // the symbol itself does NOT move — the camera does.
+  if(aIdx>=0 && padmaGrps[aIdx].visible){
+    const pulse  = Math.sin(t * 2.2);
+    const breath = Math.sin(t * 0.38);          // slow breath cycle
+    const shimmy = Math.sin(t * 1.1) * 0.008;   // tiny jitter on Z
+    const wobble = Math.cos(t * 0.73) * 0.006;  // micro wobble on X
+    const pg     = padmaGrps[aIdx];
+
+    if(viewMode===2){
+      // MUDRA: crown-attached, tilts to face camera. Jitter adds organic life.
+      pg.position.set(wobble, 4.2 + breath*0.04, shimmy);
+      pg.rotation.set(
+        -(Math.PI/2 - 0.38) + wobble,
+        cTh - figTh + Math.PI,
+        shimmy
+      );
+      padmaLight.position.set(0, 5.5, 0);
+      pg.scale.setScalar(0.82 + 0.03*Math.abs(pulse) + 0.015*breath);
+    } else {
+      // ORBIT / TOP: flat halo, slow spin + breath scale + micro float.
+      pg.position.set(wobble, 4.2 + breath*0.05, shimmy);
+      pg.rotation.set(
+        Math.PI/6 + wobble,
+        t*0.10,
+        shimmy
+      );
+      padmaLight.position.set(0, 5.5, 0);
+      pg.scale.setScalar(0.65 + 0.04*Math.abs(pulse) + 0.018*breath);
+    }
+    padmaLight.intensity = 3.5*(1 + 0.28*pulse);
+  }
+
+  // ── CAMERA overrides ─────────────────────────────────────────────────────
+  if(viewMode===2){
+    // MUDRA cam: uses cTh/cPh just like orbit, but closer and looking at padma.
+    // Snap-to-pillar sets cThTarget → camera orbits around to face that pillar
+    // from the outside, then looks at the padma which floats in front of the figure.
+    // The padma itself also faces cTh (see padma block above) so it always faces you.
+    const mR=16; // mudra orbit radius
+    cam.position.set(
+      CT.x + mR*Math.sin(cPh)*Math.sin(cTh),
+      4.8,
+      CT.z + mR*Math.sin(cPh)*Math.cos(cTh)
+    );
+    cam.lookAt(new THREE.Vector3(0, 4.1, 0));
+  } else if(viewMode===3){
+    // ── VR STEREO MODE ────────────────────────────────────────────────────
+    // Side-by-side split with barrel distortion overlay.
+    // Both eye cameras sit at head height, separated by IPD (0.063 m ≈ 0.32 units).
+    const IPD=0.32;
+    const mR_vr=16;
+    const eyePos  = new THREE.Vector3(CT.x+mR_vr*Math.sin(cPh)*Math.sin(cTh), 4.8, CT.z+mR_vr*Math.sin(cPh)*Math.cos(cTh));
+    const lookTgt = new THREE.Vector3(0, 4.1, 0); // padma face centre
+    // We render into two halves of the canvas using scissor/viewport.
+    // Left eye
+    renderer.setScissorTest(true);
+    const W=innerWidth,H=innerHeight;
+    // LEFT EYE
+    renderer.setViewport(0,0,W/2,H);
+    renderer.setScissor(0,0,W/2,H);
+    cam.position.set(eyePos.x-IPD/2,eyePos.y,eyePos.z);
+    cam.lookAt(lookTgt);
+    renderer.render(scene,cam);
+    // RIGHT EYE
+    renderer.setViewport(W/2,0,W/2,H);
+    renderer.setScissor(W/2,0,W/2,H);
+    cam.position.set(eyePos.x+IPD/2,eyePos.y,eyePos.z);
+    cam.lookAt(lookTgt);
+    renderer.render(scene,cam);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0,0,W,H);
+    renderer.setScissor(0,0,W,W);
+  }
+  // Store head x for VR (avoids referencing before declare)
+  const hx_vr = Math.sin(cTh)*0.01;
+
+  // Ortho camera tracks aspect on resize (handled in resize listener)
+  if(viewMode!==3){
+    renderer.render(scene,activeCam);
+  }
+})();
+
+window.addEventListener('resize',()=>{
+  cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();
+  const s=orthoSize;
+  camOrtho.left=-s*cam.aspect;camOrtho.right=s*cam.aspect;
+  camOrtho.top=s;camOrtho.bottom=-s;camOrtho.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+  // Composer resize
+});
+setTimeout(()=>{const l=document.getElementById('load');l.classList.add('out');setTimeout(()=>l.remove(),1300)},1200);
+}catch(e){
+  document.body.innerHTML='<div style="position:fixed;inset:0;background:#000;color:#f44;font:13px monospace;padding:20px;white-space:pre-wrap;z-index:9999">CRASH:\n'+e.message+'\n\n'+e.stack+'</div>';
+}
+</script>
+</body>
+</html>
