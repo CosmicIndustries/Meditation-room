@@ -53,6 +53,7 @@ body{overflow:hidden;background:#140b08;font-family:'Cinzel',Georgia,serif}
 #zipIn{flex:1;min-width:70px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.18);border-radius:5px;color:#fff;padding:5px 8px;font-size:9px;font-family:'Cinzel',serif}
 #zipIn::placeholder{color:rgba(255,220,195,.35)}
 #useWeather{flex:0 0 auto;padding:5px 10px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 #enter{position:fixed;inset:0;background:#140b08;z-index:100;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;color:rgba(255,190,130,.75);font-size:11px;letter-spacing:4px;text-transform:uppercase;transition:opacity 1.3s;font-family:'Cinzel Decorative',serif;cursor:pointer;text-align:center;padding:20px}
 #enter .g{font-size:34px;animation:gp 2.6s ease-in-out infinite}
@@ -91,6 +92,7 @@ body{overflow:hidden;background:#140b08;font-family:'Cinzel',Georgia,serif}
     <div class="opt sel" data-v="asc">Rising &#8593;</div><div class="opt" data-v="desc">Grounding &#8595;</div>
   </div></div>
   <div class="row">Sky<div class="opts">
+    <label for="zipIn" class="sr-only">Zip code for local cloud cover</label>
     <input id="zipIn" type="text" inputmode="numeric" maxlength="5" placeholder="Zip (optional)">
     <div class="opt" id="useWeather">Use</div>
   </div></div>
