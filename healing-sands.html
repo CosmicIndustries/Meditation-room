@@ -462,6 +462,8 @@ document.querySelectorAll('#panel .opts').forEach(group=>{
 });
 
 // ── AUDIO ENGINE ─────────────────────────────────────────────────────────────
+// Math.random() below drives generative noise/jitter only (buffers, flicker,
+// scheduling, panning) — never anything security-sensitive.
 let actx=null,masterGain=null,_mComp=null,sndOn=true;
 let windNodes=null,breezeNodes=null,toneNodes=null,fireTimer=null,waveTimer=null;
 let waveState={period:5.5};
