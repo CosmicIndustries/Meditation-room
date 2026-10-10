@@ -7,6 +7,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{overflow:hidden;background:#140b08;font-family:'Cinzel',Georgia,serif}
+#kindle,#again,#snd,#gear,#panel .opt{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 #hud{position:fixed;top:0;left:0;right:0;padding:18px 16px 0;text-align:center;pointer-events:none;z-index:10}
 #hTitle{font-family:'Cinzel Decorative',serif;font-size:clamp(12px,2.1vw,24px);letter-spacing:5px;color:#ffe3c2;text-transform:uppercase;text-shadow:0 0 60px currentColor,0 0 22px rgba(255,150,70,.8);transition:color .9s}
 #hSub{font-size:clamp(8px,1.15vw,12px);color:rgba(255,220,190,.55);margin-top:8px;letter-spacing:2.2px;transition:color .8s}
@@ -31,10 +32,10 @@ body{overflow:hidden;background:#140b08;font-family:'Cinzel',Georgia,serif}
 #again.show{display:block}
 #again:hover{border-color:rgba(255,255,255,.6)}
 
-#snd{position:fixed;top:15px;right:15px;z-index:10;width:32px;height:32px;border-radius:50%;background:rgba(20,8,4,.55);border:1px solid rgba(255,190,130,.25);color:rgba(255,210,170,.45);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;user-select:none}
+#snd{position:fixed;top:15px;right:15px;z-index:10;width:40px;height:40px;border-radius:50%;background:rgba(20,8,4,.55);border:1px solid rgba(255,190,130,.25);color:rgba(255,210,170,.45);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;user-select:none}
 #snd:hover,#snd.on{border-color:rgba(255,160,70,.7);color:rgba(255,200,140,.95)}
 
-#gear{position:fixed;top:15px;left:15px;z-index:10;width:32px;height:32px;border-radius:50%;background:rgba(20,8,4,.55);border:1px solid rgba(255,190,130,.25);color:rgba(255,210,170,.5);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;user-select:none}
+#gear{position:fixed;top:15px;left:15px;z-index:10;width:40px;height:40px;border-radius:50%;background:rgba(20,8,4,.55);border:1px solid rgba(255,190,130,.25);color:rgba(255,210,170,.5);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;user-select:none}
 #gear:hover{border-color:rgba(255,160,70,.7);color:rgba(255,200,140,.95)}
 
 #panel{position:fixed;top:56px;left:15px;z-index:10;width:220px;padding:14px;border-radius:10px;
@@ -74,7 +75,7 @@ body{overflow:hidden;background:#140b08;font-family:'Cinzel',Georgia,serif}
 <div id="kindle">&#9737; Kindle the Fire</div>
 <div id="again">Begin Again</div>
 <div id="gear" title="Settings">&#9881;</div>
-<div id="snd" title="Mute / unmute">&#9834;</div>
+<div id="snd" class="on" title="Mute / unmute">&#9834;</div>
 <div id="panel">
   <div class="row">Journey length<div class="opts" data-k="minutes">
     <div class="opt" data-v="10">10m</div><div class="opt sel" data-v="15">15m</div>
@@ -487,39 +488,61 @@ function makeNoiseBuffer(seconds){
   const buf=actx.createBuffer(2,len,sr);
   for(let c=0;c<2;c++){
     const d=buf.getChannelData(c);let b=0,peak=0;
-    for(let i=0;i<len;i++){b=b*0.985+(Math.random()*2-1)*0.015;d[i]=b;peak=Math.max(peak,Math.abs(b));}
+    for(let i=0;i<len;i++){b=b*0.96+(Math.random()*2-1)*0.04;d[i]=b;peak=Math.max(peak,Math.abs(b));}
     if(peak>0){const sc=.9/peak;for(let i=0;i<len;i++)d[i]*=sc;}
   }
   return buf;
 }
 
+// Wind gusts: a random walk nudges the gain toward a new target every few
+// seconds so the wind never settles into an audibly fixed cycle.
+function scheduleGust(){
+  if(!windNodes)return;
+  const t=actx.currentTime;
+  const base=windNodes.baseGain!==undefined?windNodes.baseGain:.05;
+  const target=base*(0.55+Math.random()*0.9);
+  windNodes.g.gain.cancelScheduledValues(t);
+  windNodes.g.gain.setValueAtTime(windNodes.g.gain.value,t);
+  windNodes.g.gain.linearRampToValueAtTime(target,t+1.5+Math.random()*2.5);
+  setTimeout(scheduleGust,3000+Math.random()*6000);
+}
+
 function startWind(){
-  const src=actx.createBufferSource();src.buffer=makeNoiseBuffer(6);src.loop=true;
+  const src=actx.createBufferSource();src.buffer=makeNoiseBuffer(14);src.loop=true;
   const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=500;lp.Q.value=.5;
   const g=actx.createGain();g.gain.value=0;g.gain.linearRampToValueAtTime(.05,actx.currentTime+3);
+  // Two incommensurate LFOs on the cutoff so gusting never repeats on a
+  // single predictable period.
   const lfo=actx.createOscillator();lfo.frequency.value=.08;
-  const lfoGain=actx.createGain();lfoGain.gain.value=140;
+  const lfoGain=actx.createGain();lfoGain.gain.value=100;
   lfo.connect(lfoGain);lfoGain.connect(lp.frequency);lfo.start();
+  const lfo2=actx.createOscillator();lfo2.frequency.value=.027;
+  const lfo2Gain=actx.createGain();lfo2Gain.gain.value=70;
+  lfo2.connect(lfo2Gain);lfo2Gain.connect(lp.frequency);lfo2.start();
   const pan=actx.createStereoPanner();
-  const panLfo=actx.createOscillator();panLfo.frequency.value=.05;
+  const panLfo=actx.createOscillator();panLfo.frequency.value=.047;
   const panLfoGain=actx.createGain();panLfoGain.gain.value=.5;
   panLfo.connect(panLfoGain);panLfoGain.connect(pan.pan);panLfo.start();
   src.connect(lp);lp.connect(g);g.connect(pan);pan.connect(_mComp);
   src.start();
-  windNodes={src,lp,g,lfo,lfoGain,pan,panLfo};
+  windNodes={src,lp,g,lfo,lfoGain,lfo2,lfo2Gain,pan,panLfo,baseGain:.05};
+  scheduleGust();
 }
 
 function startBreeze(){
-  const src=actx.createBufferSource();src.buffer=makeNoiseBuffer(5);src.loop=true;
+  const src=actx.createBufferSource();src.buffer=makeNoiseBuffer(11);src.loop=true;
   const hp=actx.createBiquadFilter();hp.type='highpass';hp.frequency.value=1800;
   const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=5200;
   const g=actx.createGain();g.gain.value=0;g.gain.linearRampToValueAtTime(.018,actx.currentTime+4);
   const lfo=actx.createOscillator();lfo.frequency.value=.22;
-  const lfoGain=actx.createGain();lfoGain.gain.value=.012;
+  const lfoGain=actx.createGain();lfoGain.gain.value=.009;
   lfo.connect(lfoGain);lfoGain.connect(g.gain);lfo.start();
+  const lfo2=actx.createOscillator();lfo2.frequency.value=.083;
+  const lfo2Gain=actx.createGain();lfo2Gain.gain.value=.006;
+  lfo2.connect(lfo2Gain);lfo2Gain.connect(g.gain);lfo2.start();
   src.connect(hp);hp.connect(lp);lp.connect(g);g.connect(_mComp);
   src.start();
-  breezeNodes={src,hp,lp,g,lfo,lfoGain};
+  breezeNodes={src,hp,lp,g,lfo,lfoGain,lfo2,lfo2Gain};
 }
 
 function curChakraFreqNorm(){return (activeCK.freq-396)/(963-396);}
@@ -566,9 +589,9 @@ function applyChakraAudio(ck,isoHz){
 function startTone(freq){
   const t=actx.currentTime;
   const sol=actx.createOscillator();sol.type='sine';sol.frequency.value=freq;
-  const solG=actx.createGain();solG.gain.setValueAtTime(0,t);solG.gain.linearRampToValueAtTime(.045,t+3);
+  const solG=actx.createGain();solG.gain.setValueAtTime(0,t);solG.gain.linearRampToValueAtTime(.02,t+3);
   const sub=actx.createOscillator();sub.type='sine';sub.frequency.value=freq*.5;
-  const subG=actx.createGain();subG.gain.setValueAtTime(0,t);subG.gain.linearRampToValueAtTime(.02,t+3.5);
+  const subG=actx.createGain();subG.gain.setValueAtTime(0,t);subG.gain.linearRampToValueAtTime(.009,t+3.5);
   sol.connect(solG);solG.connect(_mComp);sol.start();
   sub.connect(subG);subG.connect(_mComp);sub.start();
   toneNodes={sol,solG,sub,subG};
@@ -580,8 +603,8 @@ function rampTone(freq){
   toneNodes.sub.frequency.cancelScheduledValues(t);toneNodes.sub.frequency.setTargetAtTime(freq*.5,t,1.4);
   toneNodes.solG.gain.cancelScheduledValues(t);
   toneNodes.solG.gain.setValueAtTime(toneNodes.solG.gain.value,t);
-  toneNodes.solG.gain.linearRampToValueAtTime(.075,t+.5);
-  toneNodes.solG.gain.linearRampToValueAtTime(.045,t+2.2);
+  toneNodes.solG.gain.linearRampToValueAtTime(.034,t+.5);
+  toneNodes.solG.gain.linearRampToValueAtTime(.02,t+2.2);
 }
 function stopTone(){
   if(!toneNodes)return;
