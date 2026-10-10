@@ -307,14 +307,21 @@ const ocean=new THREE.Mesh(new THREE.PlaneGeometry(300,400,oSegX,oSegY),new THRE
       float depth=seafloorDepth(y);
       vDepth=depth;
       float shoalAmp=clamp(1.0/sqrt(max(depth,0.22)),0.7,2.0);
+      // Shallow water also slows a wave down (celerity ~ sqrt(depth) in
+      // the shallow-water approximation) — the same shoaling that lifts
+      // the amplitude makes the swell visibly arrive slower as it closes
+      // in on the shore and crosses the bars. Wind-driven chop below
+      // isn't a shoaling swell, so it keeps running on raw uTime.
+      float waveSpeed=clamp(sqrt(max(depth,0.05)/1.4),0.35,1.0);
+      float st=uTime*waveSpeed;
 
       // Dominant swell travels toward -y — the shore, and the viewer
       // seated behind the fire. Its phase drifts on slow Perlin noise so
       // consecutive waves never arrive identically.
-      float drift=fbm(vec2(x*0.01,uTime*0.05))*2.2;
+      float drift=fbm(vec2(x*0.01,st*0.05))*2.2;
       float h=0.0;
-      h+=sin(y*0.045+uTime*0.85+drift)*0.32*shoalAmp;
-      h+=sin(y*0.07+x*0.012+uTime*1.15+drift*1.4)*0.14*shoalAmp;
+      h+=sin(y*0.045+st*0.85+drift)*0.32*shoalAmp;
+      h+=sin(y*0.07+x*0.012+st*1.15+drift*1.4)*0.14*shoalAmp;
       // Cross-chop: smaller, undirected texture from the fbm itself.
       h+=fbm(vec2(x*0.06,y*0.06-uTime*0.5))*0.16;
       h+=fbm(vec2(x*0.15+uTime*0.12,y*0.15-uTime*0.9))*0.06;
@@ -357,7 +364,8 @@ const sandU={
   uBase:{value:new THREE.Color(PAL.sandBase)},
   uWet:{value:new THREE.Color(PAL.sandWet)},
   uGlow:{value:new THREE.Color(0xff9944)},
-  uFireI:{value:0}
+  uFireI:{value:0},
+  uTime:{value:0}
 };
 const sand=new THREE.Mesh(new THREE.PlaneGeometry(60,20,sSeg,Math.trunc(sSeg*0.4)),new THREE.ShaderMaterial({
   uniforms:sandU,
@@ -371,7 +379,7 @@ const sand=new THREE.Mesh(new THREE.PlaneGeometry(60,20,sSeg,Math.trunc(sSeg*0.4
       float bump=noise(position.xy*0.15)*0.1;
       gl_Position=projectionMatrix*modelViewMatrix*vec4(position.xy,bump,1.0);
     }`,
-  fragmentShader:`uniform vec3 uBase;uniform vec3 uWet;uniform vec3 uGlow;uniform float uFireI;
+  fragmentShader:`uniform vec3 uBase;uniform vec3 uWet;uniform vec3 uGlow;uniform float uFireI;uniform float uTime;
     varying vec2 vXY;
     float hash(vec2 p){return fract(sin(dot(p,vec2(27.1,61.7)))*43758.5453);}
     float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
@@ -381,7 +389,26 @@ const sand=new THREE.Mesh(new THREE.PlaneGeometry(60,20,sSeg,Math.trunc(sSeg*0.4
       float grain=noise(vXY*6.0)*0.06+noise(vXY*22.0)*0.03;
       vec3 col=uBase+grain;
       float wetT=smoothstep(2.0,10.0,vXY.y);
-      col=mix(col,uWet,wetT*0.55);
+
+      // Swash: a sheet of water rushes up the sand with each wave, then
+      // drains back slower than it arrived — the same deceleration that
+      // slows the swell offshore (see the ocean shader), just finishing
+      // the job on the beach. vXY.y=10 is the shoreline edge, vXY.y=-10
+      // is dry sand toward the fire; reachY is how far up the current
+      // wave has pushed, right now.
+      float cycleT=uTime/5.5;
+      float seed=hash(vec2(floor(cycleT),1.7));
+      float cyclePhase=fract(cycleT);
+      float push=cyclePhase<0.3?smoothstep(0.0,0.3,cyclePhase):1.0-smoothstep(0.3,1.0,cyclePhase);
+      push=pow(push,0.6);
+      float reachY=10.0-push*9.5+(seed-0.5)*3.0*push;
+      float swashWet=smoothstep(reachY-2.0,reachY+1.2,vXY.y);
+      float edgeBand=1.0-smoothstep(0.0,2.6,abs(vXY.y-reachY));
+
+      float wetness=max(wetT*0.55,swashWet*0.95);
+      col=mix(col,uWet*0.8,wetness);
+      col=mix(col,vec3(0.96,0.98,1.0),edgeBand*0.75); // foam right at the moving waterline
+
       float d=length(vXY-vec2(0.0,-2.0));
       float glow=uFireI*exp(-d*d*0.045);
       col+=uGlow*glow*0.9;
@@ -874,6 +901,7 @@ function updateSun(now,el){
   cloudMat.color.copy(PAL.sun).lerp(_todB.set(0xffffff),.55);
   skyU.uTime.value=el;
   oceanU.uTime.value=el;
+  sandU.uTime.value=el;
 }
 
 function updateStageProgression(now,dt){
