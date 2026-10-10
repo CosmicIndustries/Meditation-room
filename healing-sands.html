@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Healing Sands</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cinzel+Decorative&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;background:#140b08;font-family:'Cinzel',Georgia,serif}
+#hud{position:fixed;top:0;left:0;right:0;padding:18px 16px 0;text-align:center;pointer-events:none;z-index:10}
+#hTitle{font-family:'Cinzel Decorative',serif;font-size:clamp(12px,2.1vw,24px);letter-spacing:5px;color:#ffe3c2;text-transform:uppercase;text-shadow:0 0 60px currentColor,0 0 22px rgba(255,150,70,.8);transition:color .9s}
+#hSub{font-size:clamp(8px,1.15vw,12px);color:rgba(255,220,190,.55);margin-top:8px;letter-spacing:2.2px;transition:color .8s}
+#hStage{font-size:8px;color:rgba(255,200,150,.32);margin-top:7px;letter-spacing:2px}
+
+#dots{position:fixed;bottom:76px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:10}
+.dot{width:9px;height:9px;border-radius:50%;border:1.5px solid rgba(255,255,255,.3);background:rgba(255,255,255,.05);transition:all .6s}
+.dot.done{background:currentColor;border-color:currentColor;box-shadow:0 0 10px currentColor}
+.dot.now{border-color:#fff;transform:scale(1.35);box-shadow:0 0 14px currentColor}
+
+#kindle{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:10;
+  padding:11px 26px;border-radius:30px;background:rgba(40,16,6,.55);border:1px solid rgba(255,160,90,.4);
+  color:#ffd9ad;font-family:'Cinzel',serif;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;
+  cursor:pointer;transition:all .35s;user-select:none}
+#kindle:hover{border-color:rgba(255,190,110,.9);background:rgba(60,24,8,.7);transform:translateX(-50%) scale(1.05)}
+#kindle.hidden{display:none}
+
+#again{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:10;
+  padding:9px 22px;border-radius:30px;background:rgba(10,10,10,.5);border:1px solid rgba(255,255,255,.25);
+  color:rgba(255,230,210,.75);font-family:'Cinzel',serif;font-size:10px;letter-spacing:2.2px;text-transform:uppercase;
+  cursor:pointer;transition:all .3s;display:none;user-select:none}
+#again.show{display:block}
+#again:hover{border-color:rgba(255,255,255,.6)}
+
+#snd{position:fixed;top:15px;right:15px;z-index:10;width:32px;height:32px;border-radius:50%;background:rgba(20,8,4,.55);border:1px solid rgba(255,190,130,.25);color:rgba(255,210,170,.45);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;user-select:none}
+#snd:hover,#snd.on{border-color:rgba(255,160,70,.7);color:rgba(255,200,140,.95)}
+
+#gear{position:fixed;top:15px;left:15px;z-index:10;width:32px;height:32px;border-radius:50%;background:rgba(20,8,4,.55);border:1px solid rgba(255,190,130,.25);color:rgba(255,210,170,.5);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;user-select:none}
+#gear:hover{border-color:rgba(255,160,70,.7);color:rgba(255,200,140,.95)}
+
+#panel{position:fixed;top:56px;left:15px;z-index:10;width:220px;padding:14px;border-radius:10px;
+  background:rgba(14,7,4,.82);border:1px solid rgba(255,190,130,.25);backdrop-filter:blur(4px);
+  display:none;flex-direction:column;gap:10px;font-size:9px;letter-spacing:1.5px;color:rgba(255,220,195,.8);
+  text-transform:uppercase}
+#panel.show{display:flex}
+#panel.locked{opacity:.4;pointer-events:none}
+#panel .row{display:flex;flex-direction:column;gap:5px}
+#panel .opts{display:flex;gap:5px;flex-wrap:wrap}
+#panel .opt{flex:1;min-width:38px;text-align:center;padding:5px 2px;border-radius:5px;border:1px solid rgba(255,255,255,.18);cursor:pointer;transition:all .25s}
+#panel .opt.sel{background:rgba(255,160,70,.28);border-color:rgba(255,190,110,.85);color:#fff}
+#panel .opt:hover{border-color:rgba(255,190,110,.6)}
+#panel .hint{font-size:7.5px;color:rgba(255,220,195,.4);letter-spacing:1px;line-height:1.5;text-transform:none}
+
+#enter{position:fixed;inset:0;background:#140b08;z-index:100;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;color:rgba(255,190,130,.75);font-size:11px;letter-spacing:4px;text-transform:uppercase;transition:opacity 1.3s;font-family:'Cinzel Decorative',serif;cursor:pointer;text-align:center;padding:20px}
+#enter .g{font-size:34px;animation:gp 2.6s ease-in-out infinite}
+@keyframes gp{0%,100%{opacity:.3;transform:scale(.9)}50%{opacity:.85;transform:scale(1.08)}}
+#enter small{font-size:8px;letter-spacing:2px;color:rgba(255,220,195,.4);font-family:'Cinzel',serif}
+#enter.out{opacity:0;pointer-events:none}
+
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse at 50% 62%,transparent 38%,rgba(10,4,2,.78) 100%);}
+#grain{position:fixed;inset:0;pointer-events:none;z-index:3;opacity:.03;mix-blend-mode:screen}
+</style>
+</head>
+<body>
+<div id="vignette"></div>
+<canvas id="grain"></canvas>
+<div id="enter"><div class="g">&#9734;</div><div>Healing Sands</div><small>Tap to step onto the shore</small></div>
+
+<div id="hud">
+  <div id="hTitle">Healing Sands</div>
+  <div id="hSub">Watch the tide. When you are ready, kindle the fire.</div>
+  <div id="hStage"></div>
+</div>
+<div id="dots"></div>
+<div id="kindle">&#9737; Kindle the Fire</div>
+<div id="again">Begin Again</div>
+<div id="gear" title="Settings">&#9881;</div>
+<div id="snd" title="Mute / unmute">&#9834;</div>
+<div id="panel">
+  <div class="row">Journey length<div class="opts" data-k="minutes">
+    <div class="opt" data-v="10">10m</div><div class="opt sel" data-v="15">15m</div>
+    <div class="opt" data-v="20">20m</div><div class="opt" data-v="30">30m</div>
+  </div></div>
+  <div class="row">Chakra steps<div class="opts" data-k="steps">
+    <div class="opt" data-v="4">4</div><div class="opt sel" data-v="5">5</div><div class="opt" data-v="6">6</div>
+  </div></div>
+  <div class="row">Direction<div class="opts" data-k="dir">
+    <div class="opt sel" data-v="asc">Rising &#8593;</div><div class="opt" data-v="desc">Grounding &#8595;</div>
+  </div></div>
+  <div class="hint">Rising moves Root &#8594; Crown — more energising.<br>Settings lock once the fire is lit.</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+try{
+
+// ── CHAKRA DATA (shared system with Sacred Chamber) ─────────────────────────
+const CK=[
+  {name:'Root',        sk:'Muladhara',   hex:0xFF1111,css:'#FF3333',freq:396,mantra:'LAM',el:'Earth'},
+  {name:'Sacral',      sk:'Svadhisthana',hex:0xFF7700,css:'#FF8822',freq:417,mantra:'VAM',el:'Water'},
+  {name:'Solar Plexus',sk:'Manipura',    hex:0xFFEE00,css:'#FFEE33',freq:528,mantra:'RAM',el:'Fire'},
+  {name:'Heart',       sk:'Anahata',     hex:0x00CC44,css:'#22DD66',freq:639,mantra:'YAM',el:'Air'},
+  {name:'Throat',      sk:'Vishuddha',   hex:0x0088FF,css:'#2299FF',freq:741,mantra:'HAM',el:'Sound'},
+  {name:'Third Eye',   sk:'Ajna',        hex:0x3311EE,css:'#5522FF',freq:852,mantra:'AUM',el:'Light'},
+  {name:'Crown',       sk:'Sahasrara',   hex:0xAA00FF,css:'#BB22FF',freq:963,mantra:'OM', el:'Consciousness'},
+];
+const ISO_HZ=[2,6,8,10,12,40,40];
+
+const isMobile=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)||window.innerWidth<900;
+const PR=Math.min(devicePixelRatio,isMobile?1.5:2.0);
+
+function complementOf(hex,sMul,lAdd){
+  const c=new THREE.Color(hex),h={};c.getHSL(h);
+  const o=new THREE.Color();o.setHSL((h.h+.5)%1,Math.min(1,h.s*(sMul||.82)),Math.min(.82,h.l+(lAdd!==undefined?lAdd:.1)));
+  return o;
+}
+
+// ── RENDERER / SCENE / CAMERA ───────────────────────────────────────────────
+const renderer=new THREE.WebGLRenderer({antialias:!isMobile,powerPreference:'high-performance',alpha:false});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(PR);
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.08;
+document.body.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,500);
+scene.fog=new THREE.FogExp2(0x1b2a44,0.0062);
+
+addEventListener('resize',()=>{
+  cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+// Seated camera behind the fire, facing the ocean. Limited drag so the
+// framing never breaks the "sitting on the beach" composition.
+const SEAT=new THREE.Vector3(0,1.55,11);
+let cAz=0,cAzT=0,cPo=1.18,cPoT=1.18,cR=11.5,cRT=11.5; // spherical offsets around a look target ahead of the seat
+let drag=false,mPrev=[0,0];
+function updCam(){
+  cAz+=(cAzT-cAz)*.07; cPo+=(cPoT-cPo)*.07; cR+=(cRT-cR)*.07;
+  const breathe=Math.sin(performance.now()*.0005)*.03;
+  cam.position.set(Math.sin(cAz)*1.6, SEAT.y+breathe, SEAT.z+cR-11.5);
+  cam.lookAt(Math.sin(cAz)*6, SEAT.y-0.35+Math.cos(cPo-1.18)*0,-26);
+}
+const dom=renderer.domElement;
+dom.addEventListener('mousedown',e=>{drag=true;mPrev=[e.clientX,e.clientY]});
+dom.addEventListener('mousemove',e=>{if(!drag)return;cAzT=Math.max(-.42,Math.min(.42,cAzT-(e.clientX-mPrev[0])*.0022));mPrev=[e.clientX,e.clientY]});
+dom.addEventListener('mouseup',()=>drag=false);
+dom.addEventListener('wheel',e=>{cRT=Math.max(-2,Math.min(4,cRT-e.deltaY*.01))},{passive:true});
+let tp=null;
+dom.addEventListener('touchstart',e=>{tp=e.touches[0]},{passive:true});
+dom.addEventListener('touchmove',e=>{const t=e.touches[0];cAzT=Math.max(-.42,Math.min(.42,cAzT-(t.clientX-tp.clientX)*.0022));tp=t},{passive:true});
+
+// ── SKY DOME ─────────────────────────────────────────────────────────────────
+const hr=new Date().getHours();
+const DAWN=hr>=4&&hr<10;
+const PAL=DAWN?{
+  zenith:0x1b2a52,horizon:0xffb46a,sun:0xfff1c9,sandBase:0xd9b98a,sandWet:0x8d7a63,
+  oceanDeep:0x163a52,oceanShallow:0x3f93a8,h0:.05,h1:.30
+}:{
+  zenith:0x18142c,horizon:0xff7a4d,sun:0xffd9a0,sandBase:0xc9986a,sandWet:0x6b5648,
+  oceanDeep:0x14263f,oceanShallow:0x2f6e86,h0:.26,h1:.04
+};
+
+const skyU={
+  uZenith:{value:new THREE.Color(PAL.zenith)},
+  uHorizon:{value:new THREE.Color(PAL.horizon)},
+  uSunColor:{value:new THREE.Color(PAL.sun)},
+  uSunDir:{value:new THREE.Vector3(.18,PAL.h0,-1).normalize()},
+  uTime:{value:0}
+};
+const sky=new THREE.Mesh(new THREE.SphereGeometry(460,32,20),new THREE.ShaderMaterial({
+  uniforms:skyU,side:THREE.BackSide,depthWrite:false,
+  vertexShader:`varying vec3 vDir;void main(){vDir=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+  fragmentShader:`uniform vec3 uZenith;uniform vec3 uHorizon;uniform vec3 uSunColor;uniform vec3 uSunDir;uniform float uTime;
+    varying vec3 vDir;
+    float hash(vec2 p){return fract(sin(dot(p,vec2(41.3,289.1)))*43758.5453);}
+    float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+      float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));
+      return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
+    void main(){
+      float h=clamp(vDir.y*1.4+.06,0.,1.);
+      vec3 col=mix(uHorizon,uZenith,pow(h,.55));
+      float sunDot=max(dot(normalize(vDir),normalize(uSunDir)),0.);
+      float glow=pow(sunDot,22.)*.32+pow(sunDot,420.)*1.1;
+      col+=uSunColor*glow;
+      float cloud=noise(vec2(vDir.x*2.6+uTime*.008,vDir.z*2.6))*smoothstep(.0,.3,vDir.y)*smoothstep(.46,.08,vDir.y);
+      col=mix(col,col*.8+uHorizon*.55,cloud*.32);
+      gl_FragColor=vec4(col,1.);
+    }`
+}));
+scene.add(sky);
+
+const sunLight=new THREE.DirectionalLight(PAL.sun,1.15);
+scene.add(sunLight);
+const ambL=new THREE.AmbientLight(0x3a2c38,.55);scene.add(ambL);
+const hemiL=new THREE.HemisphereLight(0x5a6a8a,0x2a1810,.6);scene.add(hemiL);
+
+// Sun glow disc — a small crisp core plus a soft halo, not a single blown-out blob
+const sunDisc=new THREE.Mesh(new THREE.CircleGeometry(2.2,24),new THREE.MeshBasicMaterial({color:0xfffbe8,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}));
+sunDisc.renderOrder=1;scene.add(sunDisc);
+const sunHalo=new THREE.Mesh(new THREE.CircleGeometry(7,24),new THREE.MeshBasicMaterial({color:PAL.sun,transparent:true,opacity:.22,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}));
+sunHalo.renderOrder=1;scene.add(sunHalo);
+
+// ── OCEAN ────────────────────────────────────────────────────────────────────
+const oSegX=isMobile?60:100, oSegY=isMobile?70:130;
+const oceanU={
+  uTime:{value:0},
+  uDeep:{value:new THREE.Color(PAL.oceanDeep)},
+  uShallow:{value:new THREE.Color(PAL.oceanShallow)},
+  uChakra:{value:new THREE.Color(0x224466)}
+};
+const ocean=new THREE.Mesh(new THREE.PlaneGeometry(300,400,oSegX,oSegY),new THREE.ShaderMaterial({
+  uniforms:oceanU,transparent:true,depthWrite:true,
+  vertexShader:`uniform float uTime;varying vec2 vXY;varying float vH;varying float vFoam;
+    void main(){
+      vXY=position.xy;
+      float x=position.x,y=position.y;
+      float shoreT=smoothstep(-200.,-120.,y);
+      float amp=mix(1.0,0.45,shoreT);
+      float h=0.;
+      h+=sin(x*0.05+uTime*0.9)*0.30*amp;
+      h+=sin(x*0.11-y*0.08+uTime*1.35)*0.16*amp;
+      h+=sin(y*0.09+uTime*0.62)*0.22*amp;
+      h+=sin((x+y)*0.17+uTime*1.8)*0.09*amp;
+      vH=h;
+      float tide=-192.0+sin(uTime*0.35)*6.0;
+      float foam=1.0-smoothstep(0.0,9.0,abs(y-tide));
+      float crestFoam=smoothstep(0.30,0.5,abs(h))*(1.0-shoreT*0.6);
+      vFoam=max(foam,crestFoam*0.6);
+      gl_Position=projectionMatrix*modelViewMatrix*vec4(x,y,h,1.0);
+    }`,
+  fragmentShader:`uniform vec3 uDeep;uniform vec3 uShallow;uniform vec3 uChakra;
+    varying vec2 vXY;varying float vH;varying float vFoam;
+    void main(){
+      float s=clamp(vH*1.6+0.5,0.0,1.0);
+      vec3 col=mix(uDeep,uShallow,s);
+      col=mix(col,uChakra,0.16);
+      float glint=pow(max(0.0,1.0-abs(vH)*2.2),22.0);
+      col+=uChakra*pow(max(0.0,1.0-abs(vH)*2.2),6.0)*0.22+vec3(1.0,0.92,0.75)*glint*0.65;
+      col=mix(col,vec3(0.92,0.95,0.98),clamp(vFoam,0.0,1.0)*0.85);
+      gl_FragColor=vec4(col,0.95);
+    }`
+}));
+ocean.rotation.x=-Math.PI/2;
+ocean.position.set(0,-0.05,-206);
+scene.add(ocean);
+
+// ── SAND ─────────────────────────────────────────────────────────────────────
+const sSeg=isMobile?40:70;
+const sandU={
+  uBase:{value:new THREE.Color(PAL.sandBase)},
+  uWet:{value:new THREE.Color(PAL.sandWet)},
+  uGlow:{value:new THREE.Color(0xff9944)},
+  uFireI:{value:0}
+};
+const sand=new THREE.Mesh(new THREE.PlaneGeometry(60,20,sSeg,sSeg*0.4|0),new THREE.ShaderMaterial({
+  uniforms:sandU,
+  vertexShader:`varying vec2 vXY;
+    float hash(vec2 p){return fract(sin(dot(p,vec2(27.1,61.7)))*43758.5453);}
+    float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+      float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));
+      return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
+    void main(){
+      vXY=position.xy;
+      float bump=noise(position.xy*0.15)*0.1;
+      gl_Position=projectionMatrix*modelViewMatrix*vec4(position.xy,bump,1.0);
+    }`,
+  fragmentShader:`uniform vec3 uBase;uniform vec3 uWet;uniform vec3 uGlow;uniform float uFireI;
+    varying vec2 vXY;
+    float hash(vec2 p){return fract(sin(dot(p,vec2(27.1,61.7)))*43758.5453);}
+    float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+      float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));
+      return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
+    void main(){
+      float grain=noise(vXY*6.0)*0.06+noise(vXY*22.0)*0.03;
+      vec3 col=uBase+grain;
+      float wetT=smoothstep(2.0,10.0,vXY.y);
+      col=mix(col,uWet,wetT*0.55);
+      float d=length(vXY-vec2(0.0,-2.0));
+      float glow=uFireI*exp(-d*d*0.045);
+      col+=uGlow*glow*0.9;
+      gl_FragColor=vec4(col,1.0);
+    }`
+}));
+sand.rotation.x=-Math.PI/2;
+sand.position.set(0,0,4);
+scene.add(sand);
+
+// ── DECOR: rocks + driftwood ─────────────────────────────────────────────────
+const rockMat=new THREE.MeshStandardMaterial({color:0x2a2420,roughness:1});
+for(let i=0;i<14;i++){
+  const a=Math.random()*Math.PI*2,r=3+Math.random()*9;
+  const x=Math.sin(a)*r,z=4+Math.cos(a)*r*0.7-2;
+  if(Math.abs(x)<1.4&&z<2&&z>-1)continue; // keep fire pit clear
+  const m=new THREE.Mesh(new THREE.IcosahedronGeometry(.18+Math.random()*.3,0),rockMat);
+  m.position.set(x,.12,z);m.rotation.set(Math.random()*6,Math.random()*6,Math.random()*6);
+  scene.add(m);
+}
+const woodMat=new THREE.MeshStandardMaterial({color:0x4a3322,roughness:.95});
+[[-4.5,.15,8],[5.2,.12,10.5],[-3,.1,12]].forEach(([x,y,z],i)=>{
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(.14,.18,2.4+i*.3,7),woodMat);
+  m.position.set(x,y,z);m.rotation.z=Math.PI/2+Math.random()*.4;m.rotation.y=Math.random()*6;
+  scene.add(m);
+});
+
+// ── CAMPFIRE ─────────────────────────────────────────────────────────────────
+const firePos=new THREE.Vector3(0,0,6);
+const fireGrp=new THREE.Group();fireGrp.position.copy(firePos);scene.add(fireGrp);
+
+const stoneMat=new THREE.MeshStandardMaterial({color:0x3a3028,roughness:1});
+for(let i=0;i<9;i++){
+  const a=(i/9)*Math.PI*2;
+  const m=new THREE.Mesh(new THREE.IcosahedronGeometry(.17+Math.random()*.06,0),stoneMat);
+  m.position.set(Math.sin(a)*.78,.1,Math.cos(a)*.78);
+  m.rotation.set(Math.random()*6,Math.random()*6,0);
+  fireGrp.add(m);
+}
+const logMat=new THREE.MeshStandardMaterial({color:0x1a120c,roughness:1,emissive:0x000000});
+const logs=[];
+for(let i=0;i<5;i++){
+  const a=(i/5)*Math.PI*2+0.4;
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,1.1,6),logMat.clone());
+  m.position.set(Math.sin(a)*.12,.32,Math.cos(a)*.12);
+  m.rotation.set(Math.PI/2-.35,0,a);
+  fireGrp.add(m);logs.push(m);
+}
+
+// Flame — layered additive "tongues" + hot core, flicker-animated.
+const flameGrp=new THREE.Group();flameGrp.position.y=.42;fireGrp.add(flameGrp);
+const flameTongues=[];
+for(let i=0;i<4;i++){
+  const t=new THREE.Mesh(new THREE.ConeGeometry(.17,.62,7),new THREE.MeshBasicMaterial({color:0xff7722,transparent:true,opacity:.75,blending:THREE.AdditiveBlending,depthWrite:false}));
+  const a=(i/4)*Math.PI*2;
+  t.position.set(Math.sin(a)*.09,.3,Math.cos(a)*.09);
+  flameGrp.add(t);flameTongues.push(t);
+}
+const flameCore=new THREE.Mesh(new THREE.SphereGeometry(.16,10,8),new THREE.MeshBasicMaterial({color:0xfff7cc,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));
+flameCore.position.y=.18;flameGrp.add(flameCore);
+const flameGlow=new THREE.Mesh(new THREE.SphereGeometry(.9,10,8),new THREE.MeshBasicMaterial({color:0xff6622,transparent:true,opacity:.09,blending:THREE.AdditiveBlending,depthWrite:false}));
+flameGlow.position.y=.3;flameGrp.add(flameGlow);
+
+const fireLight=new THREE.PointLight(0xff8833,0,7);
+fireLight.position.set(0,.6,0);fireGrp.add(fireLight);
+
+// Embers
+const EMB_N=isMobile?36:60;
+const embPos=new Float32Array(EMB_N*3),embVel=new Float32Array(EMB_N*3),embAge=new Float32Array(EMB_N),embLife=new Float32Array(EMB_N);
+for(let i=0;i<EMB_N;i++){embPos[i*3+1]=-999;embAge[i]=1;}
+const embGeo=new THREE.BufferGeometry();const embAttr=new THREE.BufferAttribute(embPos,3);embGeo.setAttribute('position',embAttr);
+const embMat=new THREE.PointsMaterial({color:0xffcc88,size:.07,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true});
+const embPts=new THREE.Points(embGeo,embMat);embPts.position.copy(firePos);scene.add(embPts);
+function spawnEmb(i){
+  embPos[i*3]=(Math.random()-.5)*.3;
+  embPos[i*3+1]=.3+Math.random()*.3;
+  embPos[i*3+2]=(Math.random()-.5)*.3;
+  embVel[i*3]=(Math.random()-.5)*.1;
+  embVel[i*3+1]=.5+Math.random()*.7;
+  embVel[i*3+2]=(Math.random()-.5)*.1;
+  embLife[i]=1.0+Math.random()*1.1;embAge[i]=0;
+}
+
+// Smoke wisps
+const SMK_N=isMobile?10:18;
+const smkPos=new Float32Array(SMK_N*3),smkAge=new Float32Array(SMK_N),smkLife=new Float32Array(SMK_N);
+for(let i=0;i<SMK_N;i++){smkPos[i*3+1]=-999;smkAge[i]=1;}
+const smkGeo=new THREE.BufferGeometry();const smkAttr=new THREE.BufferAttribute(smkPos,3);smkGeo.setAttribute('position',smkAttr);
+const smkMat=new THREE.PointsMaterial({color:0x887766,size:.5,transparent:true,opacity:0,depthWrite:false,sizeAttenuation:true});
+const smkPts=new THREE.Points(smkGeo,smkMat);smkPts.position.copy(firePos);scene.add(smkPts);
+function spawnSmk(i){
+  smkPos[i*3]=(Math.random()-.5)*.2;smkPos[i*3+1]=.8;smkPos[i*3+2]=(Math.random()-.5)*.2;
+  smkLife[i]=3+Math.random()*2;smkAge[i]=0;
+}
+
+// ── STATE MACHINE ───────────────────────────────────────────────────────────
+let phase='prelude'; // prelude | igniting | journey | afterglow
+let chakraInfluence=0;
+let flameRamp=0,flameRampT=0;
+let fireLit=false;
+let stages=[],stageIdx=0,stageStartMs=0,stageDurMs=0;
+let sessionCfg={minutes:15,steps:5,dir:'asc'};
+let activeCK=CK[0];
+let startTime=performance.now();
+
+function buildStages(){
+  const order=sessionCfg.dir==='asc'?[0,1,2,3,4,5,6]:[6,5,4,3,2,1,0];
+  const n=sessionCfg.steps;
+  stages=[];
+  for(let i=0;i<n;i++){
+    const t=n===1?0:i/(n-1);
+    stages.push(order[Math.round(t*6)]);
+  }
+  stageDurMs=(sessionCfg.minutes*60000)/n;
+}
+
+function renderDots(){
+  const el=document.getElementById('dots');el.innerHTML='';
+  stages.forEach((ckIdx,i)=>{
+    const d=document.createElement('div');d.className='dot';d.style.color=CK[ckIdx].css;
+    el.appendChild(d);
+  });
+}
+function updateDotsState(){
+  const el=document.getElementById('dots');
+  [...el.children].forEach((d,i)=>{
+    d.classList.toggle('done',i<stageIdx);
+    d.classList.toggle('now',i===stageIdx);
+  });
+}
+function updateHUD(){
+  document.getElementById('hTitle').style.color=activeCK.css;
+  document.getElementById('hSub').textContent=`${activeCK.name.toUpperCase()} • ${activeCK.sk} • ${activeCK.el} • ${activeCK.freq}Hz`;
+  document.getElementById('hStage').textContent=stages.length?`Stage ${stageIdx+1} / ${stages.length} — Mantra ${activeCK.mantra}`:'';
+}
+
+function startStage(i){
+  stageIdx=i;activeCK=CK[stages[i]];
+  stageStartMs=performance.now();
+  updateHUD();updateDotsState();
+  if(toneNodes)rampTone(activeCK.freq);else startTone(activeCK.freq);
+  applyChakraAudio(activeCK,ISO_HZ[stages[i]]);
+}
+
+function enterAfterglow(){
+  phase='afterglow';
+  stopTone();
+  flameRampT=.35;
+  document.getElementById('hSub').textContent='Rest in the afterglow.';
+  document.getElementById('hStage').textContent='The journey is complete.';
+  document.getElementById('again').classList.add('show');
+}
+
+function igniteFire(){
+  if(phase!=='prelude')return;
+  phase='igniting';
+  buildStages();renderDots();
+  document.getElementById('kindle').classList.add('hidden');
+  document.getElementById('panel').classList.add('locked');
+  fireLit=true;flameRampT=1;
+  logs.forEach(l=>l.material.emissive=new THREE.Color(0x441100));
+  iA();scheduleCrackle();
+  setTimeout(()=>{phase='journey';startStage(0);},2500);
+}
+
+document.getElementById('kindle').addEventListener('click',igniteFire);
+document.getElementById('again').addEventListener('click',()=>location.reload());
+
+// Settings panel wiring
+document.getElementById('gear').addEventListener('click',()=>document.getElementById('panel').classList.toggle('show'));
+document.querySelectorAll('#panel .opts').forEach(group=>{
+  const key=group.dataset.k;
+  group.querySelectorAll('.opt').forEach(opt=>{
+    opt.addEventListener('click',()=>{
+      if(phase!=='prelude')return;
+      group.querySelectorAll('.opt').forEach(o=>o.classList.remove('sel'));
+      opt.classList.add('sel');
+      const v=opt.dataset.v;
+      sessionCfg[key]=(key==='dir')?v:parseInt(v,10);
+    });
+  });
+});
+
+// ── AUDIO ENGINE ─────────────────────────────────────────────────────────────
+let actx=null,masterGain=null,_mComp=null,sndOn=true;
+let windNodes=null,breezeNodes=null,toneNodes=null,fireTimer=null,waveTimer=null;
+let waveState={period:5.5};
+
+function iA(){
+  if(actx)return;
+  actx=new (AudioContext||webkitAudioContext)();
+  _mComp=actx.createDynamicsCompressor();
+  _mComp.threshold.value=-18;_mComp.knee.value=8;_mComp.ratio.value=8;_mComp.attack.value=.004;_mComp.release.value=.3;
+  masterGain=actx.createGain();masterGain.gain.value=1;
+  _mComp.connect(masterGain);masterGain.connect(actx.destination);
+  startWind();startBreeze();scheduleWave();
+}
+
+function makeNoiseBuffer(seconds){
+  const sr=actx.sampleRate,len=Math.floor(sr*seconds);
+  const buf=actx.createBuffer(2,len,sr);
+  for(let c=0;c<2;c++){
+    const d=buf.getChannelData(c);let b=0,peak=0;
+    for(let i=0;i<len;i++){b=b*0.985+(Math.random()*2-1)*0.015;d[i]=b;peak=Math.max(peak,Math.abs(b));}
+    if(peak>0){const sc=.9/peak;for(let i=0;i<len;i++)d[i]*=sc;}
+  }
+  return buf;
+}
+
+function startWind(){
+  const src=actx.createBufferSource();src.buffer=makeNoiseBuffer(6);src.loop=true;
+  const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=500;lp.Q.value=.5;
+  const g=actx.createGain();g.gain.value=0;g.gain.linearRampToValueAtTime(.05,actx.currentTime+3);
+  const lfo=actx.createOscillator();lfo.frequency.value=.08;
+  const lfoGain=actx.createGain();lfoGain.gain.value=140;
+  lfo.connect(lfoGain);lfoGain.connect(lp.frequency);lfo.start();
+  const pan=actx.createStereoPanner();
+  const panLfo=actx.createOscillator();panLfo.frequency.value=.05;
+  const panLfoGain=actx.createGain();panLfoGain.gain.value=.5;
+  panLfo.connect(panLfoGain);panLfoGain.connect(pan.pan);panLfo.start();
+  src.connect(lp);lp.connect(g);g.connect(pan);pan.connect(_mComp);
+  src.start();
+  windNodes={src,lp,g,lfo,lfoGain,pan,panLfo};
+}
+
+function startBreeze(){
+  const src=actx.createBufferSource();src.buffer=makeNoiseBuffer(5);src.loop=true;
+  const hp=actx.createBiquadFilter();hp.type='highpass';hp.frequency.value=1800;
+  const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=5200;
+  const g=actx.createGain();g.gain.value=0;g.gain.linearRampToValueAtTime(.018,actx.currentTime+4);
+  const lfo=actx.createOscillator();lfo.frequency.value=.22;
+  const lfoGain=actx.createGain();lfoGain.gain.value=.012;
+  lfo.connect(lfoGain);lfoGain.connect(g.gain);lfo.start();
+  src.connect(hp);hp.connect(lp);lp.connect(g);g.connect(_mComp);
+  src.start();
+  breezeNodes={src,hp,lp,g,lfo,lfoGain};
+}
+
+function curChakraFreqNorm(){return (activeCK.freq-396)/(963-396);}
+
+function scheduleWave(){
+  if(!actx)return;
+  const t=actx.currentTime,dur=waveState.period;
+  const src=actx.createBufferSource();src.buffer=makeNoiseBuffer(3);
+  const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=420;
+  const g=actx.createGain();g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(.09,t+dur*.55);
+  g.gain.linearRampToValueAtTime(.0001,t+dur*1.05);
+  src.connect(lp);lp.connect(g);g.connect(_mComp);
+  src.start(t);src.stop(t+dur*1.1);
+
+  const sprayDelay=dur*.52;
+  const sSrc=actx.createBufferSource();sSrc.buffer=makeNoiseBuffer(1);
+  const hp=actx.createBiquadFilter();hp.type='highpass';hp.frequency.value=2200+curChakraFreqNorm()*2400;
+  const sg=actx.createGain();sg.gain.setValueAtTime(0,t+sprayDelay);
+  sg.gain.linearRampToValueAtTime(.045,t+sprayDelay+.08);
+  sg.gain.linearRampToValueAtTime(.0001,t+sprayDelay+.5);
+  const sp=actx.createStereoPanner();sp.pan.value=(Math.random()*2-1)*.7;
+  sSrc.connect(hp);hp.connect(sg);sg.connect(sp);sp.connect(_mComp);
+  sSrc.start(t+sprayDelay);sSrc.stop(t+sprayDelay+.6);
+
+  waveTimer=setTimeout(scheduleWave,dur*1000*(.92+Math.random()*.16));
+}
+
+function applyChakraAudio(ck,isoHz){
+  const norm=(ck.freq-396)/(963-396);
+  const t=actx.currentTime;
+  if(windNodes){
+    windNodes.lp.frequency.cancelScheduledValues(t);
+    windNodes.lp.frequency.setTargetAtTime(380+norm*620,t,1.2);
+    windNodes.lfoGain.gain.setTargetAtTime(90+norm*120,t,1.2);
+  }
+  if(breezeNodes){
+    breezeNodes.hp.frequency.cancelScheduledValues(t);
+    breezeNodes.hp.frequency.setTargetAtTime(1400+norm*1800,t,1.2);
+  }
+  waveState.period=7.2-(isoHz/40)*3.4;
+}
+
+function startTone(freq){
+  const t=actx.currentTime;
+  const sol=actx.createOscillator();sol.type='sine';sol.frequency.value=freq;
+  const solG=actx.createGain();solG.gain.setValueAtTime(0,t);solG.gain.linearRampToValueAtTime(.045,t+3);
+  const sub=actx.createOscillator();sub.type='sine';sub.frequency.value=freq*.5;
+  const subG=actx.createGain();subG.gain.setValueAtTime(0,t);subG.gain.linearRampToValueAtTime(.02,t+3.5);
+  sol.connect(solG);solG.connect(_mComp);sol.start();
+  sub.connect(subG);subG.connect(_mComp);sub.start();
+  toneNodes={sol,solG,sub,subG};
+}
+function rampTone(freq){
+  if(!toneNodes)return;
+  const t=actx.currentTime;
+  toneNodes.sol.frequency.cancelScheduledValues(t);toneNodes.sol.frequency.setTargetAtTime(freq,t,1.4);
+  toneNodes.sub.frequency.cancelScheduledValues(t);toneNodes.sub.frequency.setTargetAtTime(freq*.5,t,1.4);
+  toneNodes.solG.gain.cancelScheduledValues(t);
+  toneNodes.solG.gain.setValueAtTime(toneNodes.solG.gain.value,t);
+  toneNodes.solG.gain.linearRampToValueAtTime(.075,t+.5);
+  toneNodes.solG.gain.linearRampToValueAtTime(.045,t+2.2);
+}
+function stopTone(){
+  if(!toneNodes)return;
+  const t=actx.currentTime,tn=toneNodes;
+  tn.solG.gain.linearRampToValueAtTime(0,t+2);
+  tn.subG.gain.linearRampToValueAtTime(0,t+2);
+  setTimeout(()=>{try{tn.sol.stop();tn.sub.stop()}catch(e){}},2100);
+  toneNodes=null;
+}
+
+function scheduleCrackle(){
+  if(!actx||!fireLit)return;
+  const t=actx.currentTime;
+  const src=actx.createBufferSource();src.buffer=makeNoiseBuffer(.3);
+  const bp=actx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=800+Math.random()*2200;bp.Q.value=3;
+  const g=actx.createGain();g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(.03+Math.random()*.03,t+.01);
+  g.gain.exponentialRampToValueAtTime(.001,t+.08+Math.random()*.1);
+  src.connect(bp);bp.connect(g);g.connect(_mComp);
+  src.start(t);src.stop(t+.25);
+  fireTimer=setTimeout(scheduleCrackle,140+Math.random()*420);
+}
+
+document.getElementById('snd').addEventListener('click',()=>{
+  sndOn=!sndOn;const b=document.getElementById('snd');
+  b.innerHTML=sndOn?'&#9834;':'&#9835;';b.classList.toggle('on',sndOn);
+  if(masterGain)masterGain.gain.linearRampToValueAtTime(sndOn?1:0,actx.currentTime+.6);
+  if(actx&&actx.state==='suspended')actx.resume();
+});
+
+// Enter overlay — first user gesture starts audio (browser autoplay policy)
+document.getElementById('enter').addEventListener('click',()=>{
+  iA();
+  if(actx.state==='suspended')actx.resume();
+  document.getElementById('enter').classList.add('out');
+});
+
+// ── ANIMATE LOOP ─────────────────────────────────────────────────────────────
+const _tmp=new THREE.Color();
+let lastT=performance.now();
+function animate(){
+  requestAnimationFrame(animate);
+  const now=performance.now();
+  const dt=Math.min(.05,(now-lastT)/1000);
+  lastT=now;
+  const el=now*.001;
+
+  // Sun arc over the whole session (dawn rises, dusk sets)
+  const arcT=Math.min(1,(now-startTime)/1800000);
+  const sunH=PAL.h0+(PAL.h1-PAL.h0)*arcT;
+  skyU.uSunDir.value.set(.18,sunH,-1).normalize();
+  sunLight.position.copy(skyU.uSunDir.value).multiplyScalar(100);
+  sunLight.color.copy(skyU.uSunColor.value);
+  sunDisc.position.copy(skyU.uSunDir.value).multiplyScalar(260);
+  sunDisc.lookAt(cam.position);
+  sunHalo.position.copy(sunDisc.position);
+  sunHalo.lookAt(cam.position);
+
+  skyU.uTime.value=el;
+  oceanU.uTime.value=el;
+
+  // Stage progression
+  if(phase==='journey'&&now-stageStartMs>stageDurMs){
+    if(stageIdx+1<stages.length)startStage(stageIdx+1);else enterAfterglow();
+  }
+  if(phase==='igniting'||phase==='journey'||phase==='afterglow'){
+    chakraInfluence=Math.min(1,chakraInfluence+dt*.5);
+  }
+
+  // Colour blending — environment leans toward the chakra COMPLEMENT,
+  // the fire itself carries the pure chakra hue.
+  const ci=chakraInfluence;
+  const chHue=new THREE.Color(activeCK.hex);
+  const chComp=complementOf(activeCK.hex);
+
+  _tmp.copy(new THREE.Color(PAL.zenith)).lerp(chComp,ci*.55);
+  skyU.uZenith.value.lerp(_tmp,.015);
+  _tmp.copy(new THREE.Color(PAL.horizon)).lerp(chHue,ci*.6);
+  skyU.uHorizon.value.lerp(_tmp,.015);
+  _tmp.copy(new THREE.Color(PAL.oceanDeep)).lerp(chComp,ci*.5);
+  oceanU.uDeep.value.lerp(_tmp,.015);
+  _tmp.copy(new THREE.Color(PAL.oceanShallow)).lerp(chHue,ci*.45);
+  oceanU.uShallow.value.lerp(_tmp,.015);
+  oceanU.uChakra.value.lerp(chHue,.02);
+  _tmp.copy(new THREE.Color(PAL.sandBase)).lerp(chHue,ci*.3);
+  sandU.uBase.value.lerp(_tmp,.015);
+  _tmp.copy(new THREE.Color(PAL.sandWet)).lerp(chComp,ci*.35);
+  sandU.uWet.value.lerp(_tmp,.015);
+  sandU.uGlow.value.lerp(chHue,.04);
+
+  // Flame ramp + flicker
+  flameRamp+=(flameRampT-flameRamp)*dt*.6;
+  const fl=(seed)=>.75+.25*Math.sin(el*5.3+seed)+.12*Math.sin(el*11.7+seed*2.1)+.06*(Math.random()-.5);
+  flameTongues.forEach((t,i)=>{
+    const f=fl(i*1.7);
+    t.scale.set(flameRamp,flameRamp*f,flameRamp);
+    t.material.opacity=.75*flameRamp*f;
+    t.material.color.lerp(chHue,.03);
+  });
+  flameCore.scale.setScalar(flameRamp*fl(9));
+  flameGlow.scale.setScalar(flameRamp*(1+fl(3)*.3));
+  flameGlow.material.color.lerp(chHue,.03);
+  fireLight.intensity=flameRamp*(2.2+fl(5)*1.1);
+  fireLight.color.lerp(chHue,.04);
+  sandU.uFireI.value=flameRamp;
+  logs.forEach(l=>{if(l.material.emissive)l.material.emissive.lerp(chHue.clone().multiplyScalar(.25*flameRamp),.02)});
+
+  // Embers
+  if(flameRamp>.15){
+    for(let i=0;i<EMB_N;i++){
+      if(embAge[i]>=1&&Math.random()<flameRamp*.18)spawnEmb(i);
+    }
+  }
+  for(let i=0;i<EMB_N;i++){
+    if(embAge[i]>=1)continue;
+    embAge[i]+=dt/embLife[i];
+    embPos[i*3]+=embVel[i*3]*dt;embPos[i*3+1]+=embVel[i*3+1]*dt;embPos[i*3+2]+=embVel[i*3+2]*dt;
+    embVel[i*3+1]+=dt*.08;
+    if(embAge[i]>=1)embPos[i*3+1]=-999;
+  }
+  embAttr.needsUpdate=true;
+  embMat.opacity=Math.min(.85,flameRamp)*.8;
+  embMat.color.lerp(new THREE.Color(0xffffff).lerp(chHue,.6),.03);
+
+  // Smoke
+  if(flameRamp>.1){
+    for(let i=0;i<SMK_N;i++){if(smkAge[i]>=1&&Math.random()<flameRamp*.03)spawnSmk(i);}
+  }
+  for(let i=0;i<SMK_N;i++){
+    if(smkAge[i]>=1)continue;
+    smkAge[i]+=dt/smkLife[i];
+    smkPos[i*3+1]+=dt*.35;smkPos[i*3]+=Math.sin(el+i)*dt*.06;smkPos[i*3+2]+=Math.cos(el*.8+i)*dt*.06;
+    if(smkAge[i]>=1)smkPos[i*3+1]=-999;
+  }
+  smkAttr.needsUpdate=true;
+  smkMat.opacity=Math.min(.22,flameRamp*.25)*(1);
+
+  // Camera
+  updCam();
+
+  renderer.render(scene,cam);
+}
+animate();
+
+}catch(err){
+  document.body.innerHTML='<pre style="color:#ffb;background:#200;padding:20px;white-space:pre-wrap;font-family:monospace">'+
+    (err&&err.stack?err.stack:err)+'</pre>';
+  console.error(err);
+}
+</script>
+</body>
+</html>
