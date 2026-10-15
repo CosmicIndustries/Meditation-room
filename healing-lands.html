@@ -642,6 +642,32 @@ const sky=new THREE.Mesh(new THREE.SphereGeometry(460,32,20),new THREE.ShaderMat
 }));
 scene.add(sky);
 
+// ── STARFIELD ────────────────────────────────────────────────────────────────
+// A fixed, seeded scatter of points just inside the sky dome (radius 430 vs.
+// the dome's 460), faded in only at night by updateSun() below, using the
+// exact same sun-height curve it already fades the sun disc with rather than
+// a separate day/night model of their own. Spherical sampling instead of
+// rejecting points outside a unit sphere keeps this a fixed-size loop.
+const starCount=[260,460,760][qTier];
+const starGeo=new THREE.BufferGeometry();
+const starPos=new Float32Array(starCount*3);
+const starCol=new Float32Array(starCount*3);
+for(let i=0;i<starCount;i++){
+  const theta=worldRng()*Math.PI*2;
+  const phi=(0.08+worldRng()*0.82)*(Math.PI/2); // 0=straight up; stops short of the horizon
+  const r=430,ringR=Math.sin(phi)*r;
+  starPos[i*3]=Math.cos(theta)*ringR;
+  starPos[i*3+1]=Math.cos(phi)*r;
+  starPos[i*3+2]=Math.sin(theta)*ringR;
+  const b=0.55+worldRng()*0.45;
+  starCol[i*3]=b;starCol[i*3+1]=b;starCol[i*3+2]=b+worldRng()*0.08;
+}
+starGeo.setAttribute('position',new THREE.BufferAttribute(starPos,3));
+starGeo.setAttribute('color',new THREE.BufferAttribute(starCol,3));
+const starsMat=new THREE.PointsMaterial({size:1.6,sizeAttenuation:false,vertexColors:true,transparent:true,opacity:0,depthWrite:false});
+const stars=new THREE.Points(starGeo,starsMat);
+scene.add(stars);
+
 const sunLight=new THREE.DirectionalLight(PAL.sun,1.15);
 sunLight.castShadow=true;
 sunLight.shadow.mapSize.set(Q.shadowSize,Q.shadowSize);
@@ -1959,6 +1985,10 @@ function updateSun(now,el){
   sunHalo.position.copy(sunDisc.position);
   sunHalo.lookAt(cam.position);
   sunHalo.material.opacity=.22*sunVisibility;
+  // Stars fade in on the same curve the sun fades out on — one night/day
+  // signal instead of a second model of its own — and stay dim underwater,
+  // where there's no clear sky to see them in regardless of the hour.
+  starsMat.opacity=(1-THREE.MathUtils.clamp(PAL.sh*6+.3,0,1))*0.85*(currentBiome.submerged?0.1:1);
   cloudMat.color.copy(PAL.sun).lerp(_todB.set(0xffffff),.55);
   // Fog reads as the biome's own murk/haze — deep water's own deep colour
   // when submerged (so depth feels like it surrounds you), the sky's
