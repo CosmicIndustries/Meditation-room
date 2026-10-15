@@ -7,7 +7,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{overflow:hidden;background:#140b08;font-family:'Cinzel',Georgia,serif}
-#kindle,#again,#snd,#gear,#panel .opt,.biomeTab,.biomeCard,#beginBtn,#vrBtn{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#kindle,#again,#snd,#gear,#panel .opt,.biomeTab,.biomeCard,#beginBtn,#vrBtn,#bioBtn,#bioPanel .bioBtn{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 #hud{position:fixed;top:0;left:0;right:0;padding:18px 16px 0;text-align:center;pointer-events:none;z-index:10}
 #hTitle{font-family:'Cinzel Decorative',serif;font-size:clamp(12px,2.1vw,24px);letter-spacing:5px;color:#ffe3c2;text-transform:uppercase;text-shadow:0 0 60px currentColor,0 0 22px rgba(255,150,70,.8);transition:color .9s}
 #hSub{font-size:clamp(8px,1.15vw,12px);color:rgba(255,220,190,.55);margin-top:8px;letter-spacing:2.2px;transition:color .8s}
@@ -76,6 +76,24 @@ body{overflow:hidden;background:#140b08;font-family:'Cinzel',Georgia,serif}
 #vrBtn.show{display:block}
 #vrBtn:hover{border-color:rgba(255,160,70,.8);color:#fff}
 
+#bioBtn{position:fixed;top:15px;right:63px;z-index:10;width:40px;height:40px;border-radius:50%;background:rgba(20,8,4,.55);border:1px solid rgba(255,190,130,.25);color:rgba(255,210,170,.45);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;user-select:none}
+#bioBtn:hover,#bioBtn.on{border-color:rgba(255,160,70,.7);color:rgba(255,200,140,.95)}
+#bioPanel{position:fixed;top:56px;right:15px;z-index:10;width:240px;padding:14px;border-radius:10px;
+  background:rgba(14,7,4,.88);border:1px solid rgba(255,190,130,.25);backdrop-filter:blur(4px);
+  display:none;flex-direction:column;gap:11px;font-size:9px;letter-spacing:1px;color:rgba(255,220,195,.8)}
+#bioPanel.show{display:flex}
+#bioPanel h4{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,200,150,.9);margin:0}
+#bioPanel .bioRow{display:flex;flex-direction:column;gap:4px;padding-bottom:9px;border-bottom:1px solid rgba(255,255,255,.08)}
+#bioPanel .bioRow:last-of-type{border-bottom:none;padding-bottom:0}
+#bioPanel .bioLabel{display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:1.3px}
+#bioPanel .bioStatus{font-size:8px;color:rgba(255,220,195,.45);line-height:1.4;text-transform:none}
+#bioPanel .bioVal{font-size:11px;color:#ffd9ad;font-weight:600}
+#bioPanel .bioBtn{align-self:flex-start;padding:5px 11px;border-radius:14px;border:1px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.04);color:rgba(255,230,210,.8);cursor:pointer;transition:all .25s;text-transform:uppercase;letter-spacing:1px}
+#bioPanel .bioBtn:hover{border-color:rgba(255,190,110,.7)}
+#bioPanel .bioBtn.active{background:rgba(120,60,20,.6);border-color:rgba(255,190,110,.9);color:#fff}
+#bioPanel .hint{font-size:7.5px;color:rgba(255,220,195,.35);line-height:1.5;text-transform:none}
+
 #vignette{position:fixed;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse at 50% 62%,transparent 38%,rgba(10,4,2,.78) 100%);}
 #grain{position:fixed;inset:0;pointer-events:none;z-index:3;opacity:.03;mix-blend-mode:screen}
 </style>
@@ -108,6 +126,31 @@ body{overflow:hidden;background:#140b08;font-family:'Cinzel',Georgia,serif}
 <div id="gear" title="Settings">&#9881;</div>
 <div id="snd" class="on" title="Mute / unmute">&#9834;</div>
 <div id="vrBtn" title="Enter VR">&#9729; Enter VR</div>
+<div id="bioBtn" title="Biometric input (experimental)">&#9825;</div>
+<div id="bioPanel">
+  <h4>Next-gen input (experimental)</h4>
+  <div class="bioRow">
+    <div class="bioLabel"><span>Heart rate</span><span class="bioVal" id="hrVal">—</span></div>
+    <div class="bioStatus" id="hrStatus">Standard Bluetooth heart-rate monitors (chest straps, rings, watches).</div>
+    <div class="bioBtn" id="hrBtn">Connect</div>
+  </div>
+  <div class="bioRow">
+    <div class="bioLabel"><span>Pulse oximeter</span><span class="bioVal" id="spo2Val">—</span></div>
+    <div class="bioStatus" id="spo2Status">Standard Bluetooth SpO&#8322; pulse oximeters.</div>
+    <div class="bioBtn" id="spo2Btn">Connect</div>
+  </div>
+  <div class="bioRow">
+    <div class="bioLabel"><span>BCI / EEG</span><span class="bioVal" id="bciVal">—</span></div>
+    <div class="bioStatus" id="bciStatus">No universal Bluetooth BCI standard exists yet — this is a wiring point for a vendor SDK (Muse, Emotiv, OpenBCI). Demo feeds a simulated signal instead.</div>
+    <div class="bioBtn" id="bciBtn">Simulate</div>
+  </div>
+  <div class="bioRow">
+    <div class="bioLabel"><span>Haptics</span><span class="bioVal" id="hapticVal">—</span></div>
+    <div class="bioStatus" id="hapticStatus">Gamepad rumble, or phone vibration.</div>
+    <div class="bioBtn" id="hapticBtn">Test pulse</div>
+  </div>
+  <div class="hint">When connected, your heart rate subtly paces the fire's flicker, and haptics tick once per chakra stage.</div>
+</div>
 <div id="panel">
   <div class="row">Journey length<div class="opts" data-k="minutes">
     <div class="opt" data-v="10">10m</div><div class="opt sel" data-v="15">15m</div>
@@ -153,6 +196,34 @@ function complementOf(hex,sMul,lAdd){
   return o;
 }
 
+// ── DETERMINISTIC WORLD-GEN ──────────────────────────────────────────────────
+// Scene LAYOUT (decor placement, prop sizes, cloud/gull field setup) is
+// seeded so a given biome renders the same arrangement every time it's
+// chosen — reloading or re-picking "Pine Forest" always gives you the same
+// pine forest, rather than a new random jumble. Ongoing ANIMATION (flame
+// flicker, ember/smoke spawn timing, wind/wave/crackle audio texture) stays
+// on Math.random() on purpose: that randomness is the desired behaviour —
+// a fire that flickered identically every session would read as fake.
+// mulberry32, a tiny public-domain 32-bit PRNG (no Math.random involved).
+function makeRNG(seed){
+  let a=seed>>>0;
+  return function(){
+    a|=0;a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function hashSeed(str){
+  let h=1779033703^str.length;
+  for(let i=0;i<str.length;i++){
+    h=Math.imul(h^str.charCodeAt(i),3432918353);
+    h=h<<13|h>>>19;
+  }
+  return (h^h>>>16)>>>0;
+}
+const worldRng=makeRNG(hashSeed('healing-lands-world')); // one-time scenery shared by every biome
+
 // ── RENDERER / SCENE / CAMERA ───────────────────────────────────────────────
 const renderer=new THREE.WebGLRenderer({antialias:!isMobile,powerPreference:'high-performance',alpha:false});
 renderer.setSize(innerWidth,innerHeight);
@@ -161,15 +232,64 @@ renderer.outputEncoding=THREE.sRGBEncoding;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=1.08;
 renderer.xr.enabled=true;
+// Cheap shadows: a low-res shadow map off the sun is enough for this scene's
+// scale (fire pit + nearby decor), kept soft rather than sharp-edged.
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 const scene=new THREE.Scene();
 const cam=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,500);
 scene.fog=new THREE.FogExp2(0x1b2a44,0.0062);
 
+// ── POST-PROCESS COMPOSITE (cheap bloom + dither) ────────────────────────────
+// A hand-rolled single extra pass rather than a full postprocessing
+// pipeline: render the scene once to an offscreen target, then one
+// fullscreen shader adds a few-tap glow around bright pixels ("bloom") and
+// dithers the quantized output — the same trick the N64 used to fake extra
+// colour depth on its 21-bit framebuffer, here breaking up banding instead
+// of a flat quantize step. Skipped inside an active WebXR session, where
+// Three.js's XR manager needs to own the framebuffer directly.
+const hasMSRT='WebGLMultisampleRenderTarget' in THREE;
+function makeSceneRT(w,h){
+  return (hasMSRT&&!isMobile)
+    ? new THREE.WebGLMultisampleRenderTarget(w,h,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter})
+    : new THREE.WebGLRenderTarget(w,h,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter});
+}
+let sceneRT=makeSceneRT(innerWidth*PR,innerHeight*PR);
+const compU={tDiffuse:{value:sceneRT.texture},uRes:{value:new THREE.Vector2(innerWidth*PR,innerHeight*PR)},uBloom:{value:1.0}};
+const compScene=new THREE.Scene();
+const compCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+const compQuad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.ShaderMaterial({
+  uniforms:compU,depthTest:false,depthWrite:false,
+  vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`,
+  fragmentShader:`uniform sampler2D tDiffuse;uniform vec2 uRes;uniform float uBloom;
+    varying vec2 vUv;
+    float hash(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
+    void main(){
+      vec2 texel=1.0/uRes;
+      vec3 col=texture2D(tDiffuse,vUv).rgb;
+      vec3 s1=texture2D(tDiffuse,vUv+vec2(1.5,1.5)*texel*2.2).rgb;
+      vec3 s2=texture2D(tDiffuse,vUv+vec2(-1.5,1.5)*texel*2.2).rgb;
+      vec3 s3=texture2D(tDiffuse,vUv+vec2(1.5,-1.5)*texel*2.2).rgb;
+      vec3 s4=texture2D(tDiffuse,vUv+vec2(-1.5,-1.5)*texel*2.2).rgb;
+      vec3 lw=vec3(.299,.587,.114);
+      vec3 bloom=s1*smoothstep(.65,1.3,dot(s1,lw))+s2*smoothstep(.65,1.3,dot(s2,lw))
+                +s3*smoothstep(.65,1.3,dot(s3,lw))+s4*smoothstep(.65,1.3,dot(s4,lw));
+      col+=bloom*0.14*uBloom;
+      float d=hash(gl_FragCoord.xy)-0.5;
+      float levels=46.0;
+      col=floor(col*levels+0.5+d)/levels;
+      gl_FragColor=vec4(col,1.0);
+    }`
+}));
+compScene.add(compQuad);
+
 addEventListener('resize',()=>{
   cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
+  sceneRT.setSize(innerWidth*PR,innerHeight*PR);
+  compU.uRes.value.set(innerWidth*PR,innerHeight*PR);
 });
 
 // Seated camera behind the fire, facing the ocean. Limited drag so the
@@ -459,6 +579,14 @@ const sky=new THREE.Mesh(new THREE.SphereGeometry(460,32,20),new THREE.ShaderMat
 scene.add(sky);
 
 const sunLight=new THREE.DirectionalLight(PAL.sun,1.15);
+sunLight.castShadow=true;
+sunLight.shadow.mapSize.set(isMobile?512:1024,isMobile?512:1024);
+sunLight.shadow.camera.left=-28;sunLight.shadow.camera.right=28;
+sunLight.shadow.camera.top=28;sunLight.shadow.camera.bottom=-28;
+sunLight.shadow.camera.near=60;sunLight.shadow.camera.far=160;
+sunLight.shadow.bias=-0.0015;
+const sunTarget=new THREE.Object3D();sunTarget.position.set(0,0,6);scene.add(sunTarget);
+sunLight.target=sunTarget;
 scene.add(sunLight);
 const ambL=new THREE.AmbientLight(0x3a2c38,.55);scene.add(ambL);
 const hemiL=new THREE.HemisphereLight(0x5a6a8a,0x2a1810,.6);scene.add(hemiL);
@@ -595,6 +723,8 @@ const ocean=new THREE.Mesh(new THREE.PlaneGeometry(300,400,oSegX,oSegY),new THRE
 ocean.rotation.x=-Math.PI/2;
 ocean.position.set(0,-0.05,-202);
 scene.add(ocean);
+// (the moving ocean surface skips receiveShadow — a shadow stuck to a
+// shifting wave mesh reads as a rendering glitch, not a cast shadow)
 
 // ── SAND ─────────────────────────────────────────────────────────────────────
 const sSeg=isMobile?40:70;
@@ -606,27 +736,72 @@ const sandU={
   uTime:{value:0},
   uWetOn:{value:1}
 };
-const sand=new THREE.Mesh(new THREE.PlaneGeometry(60,20,sSeg,Math.trunc(sSeg*0.4)),new THREE.ShaderMaterial({
-  uniforms:sandU,
-  vertexShader:`varying vec2 vXY;
-    float hash(vec2 p){return fract(sin(dot(p,vec2(27.1,61.7)))*43758.5453);}
-    float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
-      float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));
-      return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
-    void main(){
-      vXY=position.xy;
-      float bump=noise(position.xy*0.15)*0.1;
-      gl_Position=projectionMatrix*modelViewMatrix*vec4(position.xy,bump,1.0);
-    }`,
-  fragmentShader:`uniform vec3 uBase;uniform vec3 uWet;uniform vec3 uGlow;uniform float uFireI;uniform float uTime;uniform float uWetOn;
+// A small procedurally-painted "splat" bitmap (soft blurred dots, baked
+// once to a canvas) gives the ground real mip-mapped texture detail —
+// unlike pure analytic shader noise, a mipmapped bitmap stops shimmering
+// once it's small on screen near the horizon.
+function makeSplatTexture(size,seedStr){
+  const cnv=document.createElement('canvas');cnv.width=cnv.height=size;
+  const ctx=cnv.getContext('2d');
+  ctx.fillStyle='#808080';ctx.fillRect(0,0,size,size);
+  const rng=makeRNG(hashSeed(seedStr));
+  for(let i=0;i<size*2.2;i++){
+    const x=rng()*size,y=rng()*size,r=1+rng()*2.6;
+    const v=Math.floor(70+rng()*160);
+    const g=ctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,`rgba(${v},${v},${v},0.55)`);
+    g.addColorStop(1,'rgba(128,128,128,0)');
+    ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2);
+  }
+  const tex=new THREE.CanvasTexture(cnv);
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+  tex.generateMipmaps=true;
+  tex.minFilter=THREE.LinearMipmapLinearFilter;
+  tex.magFilter=THREE.LinearFilter;
+  return tex;
+}
+const groundSplat=makeSplatTexture(128,'ground-splat');
+sandU.uGrain={value:groundSplat};
+
+// The ground uses MeshStandardMaterial (via onBeforeCompile) rather than a
+// raw ShaderMaterial so it gets Three's real lighting + shadow-receiving
+// for free; the procedural height/colour logic below is spliced into the
+// standard chunk pipeline at the same injection points Three itself uses.
+const sandMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.88,metalness:0});
+sandMat.onBeforeCompile=(shader)=>{
+  Object.assign(shader.uniforms,sandU);
+  const noiseLib=`
     varying vec2 vXY;
     float hash(vec2 p){return fract(sin(dot(p,vec2(27.1,61.7)))*43758.5453);}
     float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
       float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));
       return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
-    void main(){
+    float groundHeight(vec2 p){return noise(p*0.15)*0.1;}
+  `;
+  shader.vertexShader=noiseLib+shader.vertexShader
+    .replace('#include <beginnormal_vertex>',`#include <beginnormal_vertex>
+      // Height-differential normal: a cheap finite-difference "bump map"
+      // straight off the same noise that displaces the ground, so lighting
+      // (and the shadows it casts/receives) reads the terrain's relief
+      // instead of shading a perfectly flat plane.
+      {
+        float heps=0.5;
+        float hC=groundHeight(position.xy);
+        float hX=groundHeight(position.xy+vec2(heps,0.0));
+        float hY=groundHeight(position.xy+vec2(0.0,heps));
+        objectNormal=normalize(vec3(-(hX-hC)/heps,-(hY-hC)/heps,1.0));
+      }`)
+    .replace('#include <begin_vertex>',`#include <begin_vertex>
+      vXY=position.xy;
+      transformed.z=groundHeight(position.xy);`);
+  shader.fragmentShader=noiseLib+`
+    uniform vec3 uBase;uniform vec3 uWet;uniform vec3 uGlow;uniform float uFireI;uniform float uTime;uniform float uWetOn;
+    uniform sampler2D uGrain;
+  `+shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+    {
       float grain=noise(vXY*6.0)*0.06+noise(vXY*22.0)*0.03;
-      vec3 col=uBase+grain;
+      float splat=texture2D(uGrain,vXY*0.35).r-0.5; // mip-mapped bitmap detail, antialiases at distance
+      vec3 col=uBase+grain+splat*0.05;
       float wetT=smoothstep(2.0,10.0,vXY.y);
 
       // Swash: a sheet of water rushes up the sand with each wave, then
@@ -651,11 +826,13 @@ const sand=new THREE.Mesh(new THREE.PlaneGeometry(60,20,sSeg,Math.trunc(sSeg*0.4
       float d=length(vXY-vec2(0.0,-2.0));
       float glow=uFireI*exp(-d*d*0.045);
       col+=uGlow*glow*0.9;
-      gl_FragColor=vec4(col,1.0);
-    }`
-}));
+      diffuseColor.rgb=col;
+    }`);
+};
+const sand=new THREE.Mesh(new THREE.PlaneGeometry(60,20,sSeg,Math.trunc(sSeg*0.4)),sandMat);
 sand.rotation.x=-Math.PI/2;
 sand.position.set(0,0,4);
+sand.receiveShadow=true;
 scene.add(sand);
 
 // ── DECOR: theme-driven prop scattering ──────────────────────────────────────
@@ -665,14 +842,14 @@ scene.add(sand);
 // columns or ruins; 'ring' as portals, coral rings or halos — depending on
 // each biome's tint and placement density.
 const DECOR_BASE_COUNT={rock:14,log:4,crystal:11,spike:10,pillar:6,ring:4};
-function makeDecorMesh(type,mat){
+function makeDecorMesh(type,mat,rng){
   switch(type){
-    case 'log': return new THREE.Mesh(new THREE.CylinderGeometry(.14,.18,2.2+Math.random()*1.0,7),mat);
-    case 'crystal': return new THREE.Mesh(new THREE.OctahedronGeometry(.28+Math.random()*.26,0),mat);
-    case 'spike': return new THREE.Mesh(new THREE.ConeGeometry(.2+Math.random()*.2,1.0+Math.random()*1.4,6),mat);
-    case 'pillar': return new THREE.Mesh(new THREE.CylinderGeometry(.16,.22,1.8+Math.random()*1.8,8),mat);
-    case 'ring': return new THREE.Mesh(new THREE.TorusGeometry(.32+Math.random()*.22,.08,8,16),mat);
-    default: return new THREE.Mesh(new THREE.IcosahedronGeometry(.18+Math.random()*.3,0),mat);
+    case 'log': return new THREE.Mesh(new THREE.CylinderGeometry(.14,.18,2.2+rng()*1.0,7),mat);
+    case 'crystal': return new THREE.Mesh(new THREE.OctahedronGeometry(.28+rng()*.26,0),mat);
+    case 'spike': return new THREE.Mesh(new THREE.ConeGeometry(.2+rng()*.2,1.0+rng()*1.4,6),mat);
+    case 'pillar': return new THREE.Mesh(new THREE.CylinderGeometry(.16,.22,1.8+rng()*1.8,8),mat);
+    case 'ring': return new THREE.Mesh(new THREE.TorusGeometry(.32+rng()*.22,.08,8,16),mat);
+    default: return new THREE.Mesh(new THREE.IcosahedronGeometry(.18+rng()*.3,0),mat);
   }
 }
 const decorGroup=new THREE.Group();scene.add(decorGroup);
@@ -683,24 +860,26 @@ function buildDecor(biome){
     decorGroup.remove(m);m.geometry.dispose();
   }
   if(decorMat)decorMat.dispose();
-  decorMat=new THREE.MeshStandardMaterial({color:biome.tint,roughness:.95});
+  decorMat=new THREE.MeshStandardMaterial({color:biome.tint,roughness:.55}); // <1 so sun specular actually shows
   const types=(biome.decor&&biome.decor.length)?biome.decor:['rock'];
+  const rng=makeRNG(hashSeed(biome.id)); // same biome -> same layout, every time
   types.forEach(type=>{
     const n=Math.max(1,Math.round((DECOR_BASE_COUNT[type]||8)*biome.density));
     const tall=type==='pillar'||type==='spike'||type==='ring';
     for(let i=0;i<n;i++){
-      const a=Math.random()*Math.PI*2,r=3+Math.random()*10;
+      const a=rng()*Math.PI*2,r=3+rng()*10;
       const x=Math.sin(a)*r,z=4+Math.cos(a)*r*0.7-2;
       if(Math.abs(x)<1.4&&z<2&&z>-1)continue; // keep fire pit clear
-      const m=makeDecorMesh(type,decorMat);
+      const m=makeDecorMesh(type,decorMat,rng);
+      m.castShadow=true;m.receiveShadow=true;
       if(type==='log'){
-        m.position.set(x,.15,z);m.rotation.z=Math.PI/2+Math.random()*.4;m.rotation.y=Math.random()*6;
+        m.position.set(x,.15,z);m.rotation.z=Math.PI/2+rng()*.4;m.rotation.y=rng()*6;
       }else if(type==='ring'){
-        m.position.set(x,.4+Math.random()*.5,z);m.rotation.x=Math.random()*6;m.rotation.y=Math.random()*6;
+        m.position.set(x,.4+rng()*.5,z);m.rotation.x=rng()*6;m.rotation.y=rng()*6;
       }else if(tall){
-        m.position.set(x,0,z);m.rotation.y=Math.random()*6;
+        m.position.set(x,0,z);m.rotation.y=rng()*6;
       }else{
-        m.position.set(x,.12,z);m.rotation.set(Math.random()*6,Math.random()*6,Math.random()*6);
+        m.position.set(x,.12,z);m.rotation.set(rng()*6,rng()*6,rng()*6);
       }
       decorGroup.add(m);
     }
@@ -711,12 +890,13 @@ function buildDecor(biome){
 const firePos=new THREE.Vector3(0,0,6);
 const fireGrp=new THREE.Group();fireGrp.position.copy(firePos);scene.add(fireGrp);
 
-const stoneMat=new THREE.MeshStandardMaterial({color:0x3a3028,roughness:1});
+const stoneMat=new THREE.MeshStandardMaterial({color:0x3a3028,roughness:.6});
 for(let i=0;i<9;i++){
   const a=(i/9)*Math.PI*2;
-  const m=new THREE.Mesh(new THREE.IcosahedronGeometry(.17+Math.random()*.06,0),stoneMat);
+  const m=new THREE.Mesh(new THREE.IcosahedronGeometry(.17+worldRng()*.06,0),stoneMat);
   m.position.set(Math.sin(a)*.78,.1,Math.cos(a)*.78);
-  m.rotation.set(Math.random()*6,Math.random()*6,0);
+  m.rotation.set(worldRng()*6,worldRng()*6,0);
+  m.castShadow=true;m.receiveShadow=true;
   fireGrp.add(m);
 }
 const logMat=new THREE.MeshStandardMaterial({color:0x1a120c,roughness:1,emissive:0x000000});
@@ -726,6 +906,7 @@ for(let i=0;i<5;i++){
   const m=new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,1.1,6),logMat.clone());
   m.position.set(Math.sin(a)*.12,.32,Math.cos(a)*.12);
   m.rotation.set(Math.PI/2-.35,0,a);
+  m.castShadow=true;
   fireGrp.add(m);logs.push(m);
 }
 
@@ -783,18 +964,18 @@ const cloudGroups=[];
 const cloudMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.82,fog:true});
 for(let i=0;i<CLOUD_N;i++){
   const grp=new THREE.Group();
-  const puffs=2+Math.floor(Math.random()*3);
+  const puffs=2+Math.floor(worldRng()*3);
   for(let j=0;j<puffs;j++){
-    const r=2.4+Math.random()*2.6;
+    const r=2.4+worldRng()*2.6;
     const m=new THREE.Mesh(new THREE.IcosahedronGeometry(r,0),cloudMat);
-    m.position.set((Math.random()-.5)*6.5,(Math.random()-.5)*1.4,(Math.random()-.5)*3.2);
-    m.scale.y=.5+Math.random()*.22;
+    m.position.set((worldRng()-.5)*6.5,(worldRng()-.5)*1.4,(worldRng()-.5)*3.2);
+    m.scale.y=.5+worldRng()*.22;
     grp.add(m);
   }
-  const a=Math.random()*Math.PI*2,r=90+Math.random()*180;
-  grp.position.set(Math.sin(a)*r,46+Math.random()*34,-Math.cos(a)*r-40);
-  grp.userData={driftSpeed:.6+Math.random()*1.0,driftDir:Math.random()<.5?1:-1};
-  grp.visible=Math.random()<.55; // random by default until weather sets a density
+  const a=worldRng()*Math.PI*2,r=90+worldRng()*180;
+  grp.position.set(Math.sin(a)*r,46+worldRng()*34,-Math.cos(a)*r-40);
+  grp.userData={driftSpeed:.6+worldRng()*1.0,driftDir:worldRng()<.5?1:-1};
+  grp.visible=worldRng()<.55; // a fixed initial field, until weather sets a density
   scene.add(grp);
   cloudGroups.push(grp);
 }
@@ -832,13 +1013,13 @@ const gulls=[];
 for(let i=0;i<GULL_N;i++){
   const g=makeGull();
   Object.assign(g.userData,{
-    radius:15+Math.random()*25,
-    height:8+Math.random()*12,
-    speed:.08+Math.random()*.08,
-    angle:Math.random()*Math.PI*2,
-    flapPhase:Math.random()*10,
-    flapRate:9+Math.random()*3,
-    centerZ:-20-Math.random()*70,
+    radius:15+worldRng()*25,
+    height:8+worldRng()*12,
+    speed:.08+worldRng()*.08,
+    angle:worldRng()*Math.PI*2,
+    flapPhase:worldRng()*10,
+    flapRate:9+worldRng()*3,
+    centerZ:-20-worldRng()*70,
   });
   scene.add(g);gulls.push(g);
 }
@@ -874,13 +1055,14 @@ const ambGeo=new THREE.BufferGeometry();const ambAttr=new THREE.BufferAttribute(
 const ambMat=new THREE.PointsMaterial({color:0xffffff,size:.16,transparent:true,opacity:0,depthWrite:false,sizeAttenuation:true,blending:THREE.AdditiveBlending});
 const ambPts=new THREE.Points(ambGeo,ambMat);scene.add(ambPts);
 let ambCount=0,ambMotion={dir:0,drift:.5},ambSpeed=.5,ambSpread=40;
-function spawnAmb(i,fresh){
-  ambPos[i*3]=(Math.random()-.5)*ambSpread;
-  ambPos[i*3+1]=fresh?Math.random()*22:(ambMotion.dir<0?22:ambMotion.dir>0?.2:Math.random()*22);
-  ambPos[i*3+2]=(Math.random()-.5)*ambSpread-6;
-  ambVel[i*3]=(Math.random()-.5)*ambMotion.drift;
-  ambVel[i*3+1]=ambMotion.dir*(.6+Math.random()*.8)*ambSpeed;
-  ambVel[i*3+2]=(Math.random()-.5)*ambMotion.drift;
+function spawnAmb(i,fresh,rng){
+  const R=rng||Math.random; // seeded for the initial per-biome layout, true-random on recycle
+  ambPos[i*3]=(R()-.5)*ambSpread;
+  ambPos[i*3+1]=fresh?R()*22:(ambMotion.dir<0?22:ambMotion.dir>0?.2:R()*22);
+  ambPos[i*3+2]=(R()-.5)*ambSpread-6;
+  ambVel[i*3]=(R()-.5)*ambMotion.drift;
+  ambVel[i*3+1]=ambMotion.dir*(.6+R()*.8)*ambSpeed;
+  ambVel[i*3+2]=(R()-.5)*ambMotion.drift;
 }
 function buildAmbientParticles(biome){
   const p=biome.particle||{count:0};
@@ -890,8 +1072,9 @@ function buildAmbientParticles(biome){
   ambSpread=p.spread!==undefined?p.spread:40;
   ambMat.color.set(p.color!==undefined?p.color:0xffffff);
   ambMat.size=(p.type==='bubbles'||p.type==='fireflies'||p.type==='bioluminescence'||p.type==='stardust')?.1:.16;
+  const rng=makeRNG(hashSeed(biome.id+':particles')); // same biome -> same initial scatter
   for(let i=0;i<AMB_MAX;i++){
-    if(i<ambCount)spawnAmb(i,true);else ambPos[i*3+1]=-999;
+    if(i<ambCount)spawnAmb(i,true,rng);else ambPos[i*3+1]=-999;
   }
   ambAttr.needsUpdate=true;
   ambMat.opacity=ambCount>0?.75:0;
@@ -972,6 +1155,7 @@ function startStage(i){
   updateHUD();updateDotsState();
   if(toneNodes)rampTone(activeCK.freq);else startTone(activeCK.freq);
   applyChakraAudio(activeCK,ISO_HZ[stages[i]]);
+  if(Bio.hapticsReady)hapticPulse(150,0.5,0.3);
 }
 
 function enterAfterglow(){
@@ -1073,6 +1257,39 @@ document.getElementById('useWeather').addEventListener('click',async()=>{
 let actx=null,masterGain=null,_mComp=null,sndOn=true;
 let windNodes=null,breezeNodes=null,toneNodes=null;
 let waveState={period:5.5};
+let firePanner=null,wavePanner=null;
+
+// Real binaural 3D audio — the browser-native equivalent of HRIR/Atmos-style
+// spatialization. Web Audio's PannerNode with panningModel:'HRTF' convolves
+// each source against a built-in head-related impulse response, so the fire
+// crackle and the ocean swell genuinely localize in the direction you're
+// facing; the AudioListener is updated from the camera every frame (see
+// updateAudioListener below), so turning your head in VR re-pans them live.
+// True OS-level surround drivers (Dolby Atmos, Windows Sonic, Razer
+// Surround) aren't reachable from a webpage at all — this is the real,
+// in-browser equivalent, not an imitation of those.
+function makePanner(pos){
+  const p=actx.createPanner();
+  p.panningModel='HRTF';p.distanceModel='inverse';
+  p.refDistance=3;p.maxDistance=250;p.rolloffFactor=1;
+  if(p.positionX){p.positionX.value=pos.x;p.positionY.value=pos.y;p.positionZ.value=pos.z;}
+  else if(p.setPosition)p.setPosition(pos.x,pos.y,pos.z);
+  return p;
+}
+function updateAudioListener(){
+  if(!actx)return;
+  const L=actx.listener,p=cam.position;
+  const fwd=new THREE.Vector3();cam.getWorldDirection(fwd);
+  const up=cam.up;
+  if(L.positionX){
+    L.positionX.value=p.x;L.positionY.value=p.y;L.positionZ.value=p.z;
+    L.forwardX.value=fwd.x;L.forwardY.value=fwd.y;L.forwardZ.value=fwd.z;
+    L.upX.value=up.x;L.upY.value=up.y;L.upZ.value=up.z;
+  }else if(L.setPosition){
+    L.setPosition(p.x,p.y,p.z);
+    L.setOrientation(fwd.x,fwd.y,fwd.z,up.x,up.y,up.z);
+  }
+}
 
 function iA(){
   if(actx)return;
@@ -1081,6 +1298,9 @@ function iA(){
   _mComp.threshold.value=-18;_mComp.knee.value=8;_mComp.ratio.value=8;_mComp.attack.value=.004;_mComp.release.value=.3;
   masterGain=actx.createGain();masterGain.gain.value=1;
   _mComp.connect(masterGain);masterGain.connect(actx.destination);
+  firePanner=makePanner(firePos);firePanner.connect(_mComp);
+  wavePanner=makePanner({x:0,y:0,z:-80}); // out toward the sea, wherever this biome's shoreline sits
+  wavePanner.connect(_mComp);
   startWind();startBreeze();scheduleWave();
 }
 
@@ -1156,7 +1376,7 @@ function scheduleWave(){
   const g=actx.createGain();g.gain.setValueAtTime(0,t);
   g.gain.linearRampToValueAtTime(.09,t+dur*.55);
   g.gain.linearRampToValueAtTime(.0001,t+dur*1.05);
-  src.connect(lp);lp.connect(g);g.connect(_mComp);
+  src.connect(lp);lp.connect(g);g.connect(wavePanner);
   src.start(t);src.stop(t+dur*1.1);
 
   const sprayDelay=dur*.52;
@@ -1166,7 +1386,7 @@ function scheduleWave(){
   sg.gain.linearRampToValueAtTime(.045,t+sprayDelay+.08);
   sg.gain.linearRampToValueAtTime(.0001,t+sprayDelay+.5);
   const sp=actx.createStereoPanner();sp.pan.value=(Math.random()*2-1)*.7;
-  sSrc.connect(hp);hp.connect(sg);sg.connect(sp);sp.connect(_mComp);
+  sSrc.connect(hp);hp.connect(sg);sg.connect(sp);sp.connect(wavePanner);
   sSrc.start(t+sprayDelay);sSrc.stop(t+sprayDelay+.6);
 
   setTimeout(scheduleWave,dur*1000*(.92+Math.random()*.16));
@@ -1226,7 +1446,7 @@ function scheduleCrackle(){
   const g=actx.createGain();g.gain.setValueAtTime(0,t);
   g.gain.linearRampToValueAtTime(.03+Math.random()*.03,t+.01);
   g.gain.exponentialRampToValueAtTime(.001,t+.08+Math.random()*.1);
-  src.connect(bp);bp.connect(g);g.connect(_mComp);
+  src.connect(bp);bp.connect(g);g.connect(firePanner);
   src.start(t);src.stop(t+.25);
   setTimeout(scheduleCrackle,140+Math.random()*420);
 }
@@ -1258,6 +1478,118 @@ vrBtn.addEventListener('click',async()=>{
     session.addEventListener('end',()=>vrBtn.classList.remove('on'));
     vrBtn.classList.add('on');
   }catch(err){console.error('WebXR session failed to start',err);}
+});
+
+// ── BIO INTERFACE (experimental) ─────────────────────────────────────────────
+// Stubs for next-level biofeedback input. Heart rate and pulse oximetry use
+// real, standard Web Bluetooth GATT services, genuinely connectable to real
+// hardware wherever Web Bluetooth is available. There's no universal
+// Bluetooth (or any browser) standard for consumer BCI/EEG headsets or
+// biohaptic suits, so those two are wired as clearly-labelled stubs instead:
+// BCI runs a simulated signal so the integration point is visible without
+// hardware, and haptics drives whatever real output the browser can already
+// reach (a gamepad's rumble motors, or a phone's vibration motor).
+const Bio={hr:null,spo2:null,eeg:null,hapticsReady:false};
+function bioText(id,text){const el=document.getElementById(id);if(el)el.textContent=text;}
+
+document.getElementById('bioBtn').addEventListener('click',()=>{
+  document.getElementById('bioBtn').classList.toggle('on');
+  document.getElementById('bioPanel').classList.toggle('show');
+});
+
+function hapticPulse(duration,strong,weak){
+  const pads=navigator.getGamepads?navigator.getGamepads():[];
+  const pad=pads&&[...pads].find(p=>p&&p.vibrationActuator);
+  if(pad){pad.vibrationActuator.playEffect('dual-rumble',{duration,strongMagnitude:strong,weakMagnitude:weak});return true;}
+  if(navigator.vibrate){navigator.vibrate(duration);return true;}
+  return false;
+}
+
+// Heart Rate — Bluetooth SIG "Heart Rate" GATT service (0x180D).
+document.getElementById('hrBtn').addEventListener('click',async()=>{
+  if(!navigator.bluetooth){bioText('hrStatus',"Web Bluetooth isn't available in this browser.");return;}
+  try{
+    bioText('hrStatus','Choose a device…');
+    const device=await navigator.bluetooth.requestDevice({filters:[{services:['heart_rate']}]});
+    const server=await device.gatt.connect();
+    const service=await server.getPrimaryService('heart_rate');
+    const char=await service.getCharacteristic('heart_rate_measurement');
+    await char.startNotifications();
+    char.addEventListener('characteristicvaluechanged',e=>{
+      const v=e.target.value,flags=v.getUint8(0);
+      Bio.hr=(flags&0x1)?v.getUint16(1,true):v.getUint8(1);
+      bioText('hrVal',Bio.hr+' bpm');
+    });
+    bioText('hrStatus','Connected to '+(device.name||'a heart-rate monitor')+'.');
+    const btn=document.getElementById('hrBtn');btn.classList.add('active');btn.textContent='Connected';
+  }catch(err){
+    bioText('hrStatus',err&&err.name==='NotFoundError'?'No device chosen.':'Could not connect: '+(err&&err.message?err.message:err));
+  }
+});
+
+// IEEE-11073 16-bit SFLOAT decoder (4-bit exponent + 12-bit mantissa,
+// both two's-complement) — the encoding Bluetooth health devices use for
+// measurement values, including the pulse-oximeter characteristic below.
+function parseSFLOAT(raw){
+  let mantissa=raw&0x0FFF,exponent=(raw>>12)&0xF;
+  if(exponent>=8)exponent-=16;
+  if(mantissa>=0x0800)mantissa-=0x1000;
+  return mantissa*Math.pow(10,exponent);
+}
+// Pulse Oximeter — Bluetooth SIG "Pulse Oximeter" GATT service (0x1822),
+// "PLX Continuous Measurement" characteristic (0x2A5F).
+document.getElementById('spo2Btn').addEventListener('click',async()=>{
+  if(!navigator.bluetooth){bioText('spo2Status',"Web Bluetooth isn't available in this browser.");return;}
+  try{
+    bioText('spo2Status','Choose a device…');
+    const device=await navigator.bluetooth.requestDevice({filters:[{services:[0x1822]}]});
+    const server=await device.gatt.connect();
+    const service=await server.getPrimaryService(0x1822);
+    const char=await service.getCharacteristic(0x2a5f);
+    await char.startNotifications();
+    char.addEventListener('characteristicvaluechanged',e=>{
+      const v=e.target.value;
+      Bio.spo2=parseSFLOAT(v.getUint16(1,true));
+      bioText('spo2Val',Math.round(Bio.spo2)+'%');
+    });
+    bioText('spo2Status','Connected to '+(device.name||'a pulse oximeter')+'.');
+    const btn=document.getElementById('spo2Btn');btn.classList.add('active');btn.textContent='Connected';
+  }catch(err){
+    bioText('spo2Status',err&&err.name==='NotFoundError'?'No device chosen.':'Could not connect: '+(err&&err.message?err.message:err));
+  }
+});
+
+// BCI / EEG stub — simulates a slow alpha/theta-like signal so the
+// integration point, and what you'd DO with real EEG data, is visible
+// without hardware; swap this interval for a real device SDK's data
+// callback to go live.
+let bciTimer=null;
+document.getElementById('bciBtn').addEventListener('click',()=>{
+  const btn=document.getElementById('bciBtn');
+  if(bciTimer){
+    clearInterval(bciTimer);bciTimer=null;Bio.eeg=null;
+    btn.classList.remove('active');btn.textContent='Simulate';
+    bioText('bciVal','—');
+    bioText('bciStatus','No universal Bluetooth BCI standard exists yet — this is a wiring point for a vendor SDK (Muse, Emotiv, OpenBCI). Demo feeds a simulated signal instead.');
+    return;
+  }
+  let t=0;
+  bciTimer=setInterval(()=>{
+    t+=0.5;
+    Bio.eeg={alpha:.5+.5*Math.sin(t*0.3),theta:.5+.5*Math.sin(t*0.21+2)};
+    bioText('bciVal','α '+Bio.eeg.alpha.toFixed(2)+' θ '+Bio.eeg.theta.toFixed(2));
+  },500);
+  btn.classList.add('active');btn.textContent='Stop';
+  bioText('bciStatus',"Simulated signal running — wire a real EEG SDK's callback into Bio.eeg here.");
+});
+
+// Haptics — real output wherever the browser can reach it (a gamepad's
+// rumble motors, or a phone's vibration motor); no universal "biohaptic
+// suit" web API exists yet.
+document.getElementById('hapticBtn').addEventListener('click',()=>{
+  const ok=hapticPulse(220,0.7,0.4);
+  Bio.hapticsReady=ok;
+  bioText('hapticStatus',ok?'Pulsed — stage transitions will tick this too.':'No haptic output available on this device/browser.');
 });
 
 // Begin — first user gesture starts audio (browser autoplay policy). The
@@ -1327,17 +1659,22 @@ function updateEnvironmentColors(chHue,chComp,ci){
 
 function updateFire(chHue,el,dt){
   flameRamp+=(flameRampT-flameRamp)*dt*.6;
+  // A connected heart-rate monitor subtly paces the fire's breathing — a
+  // gentle brightness pulse synced to the real heartbeat, on top of its
+  // own natural flicker, not a replacement for it.
+  const hrPulse=Bio.hr?0.08*Math.sin(el*2*Math.PI*(Bio.hr/60)):0;
+  const ramp=flameRamp*(1+hrPulse);
   const fl=(seed)=>.75+.25*Math.sin(el*5.3+seed)+.12*Math.sin(el*11.7+seed*2.1)+.06*(Math.random()-.5);
   flameTongues.forEach((t,i)=>{
     const f=fl(i*1.7);
-    t.scale.set(flameRamp,flameRamp*f,flameRamp);
-    t.material.opacity=.75*flameRamp*f;
+    t.scale.set(ramp,ramp*f,ramp);
+    t.material.opacity=.75*ramp*f;
     t.material.color.lerp(chHue,.03);
   });
-  flameCore.scale.setScalar(flameRamp*fl(9));
-  flameGlow.scale.setScalar(flameRamp*(1+fl(3)*.3));
+  flameCore.scale.setScalar(ramp*fl(9));
+  flameGlow.scale.setScalar(ramp*(1+fl(3)*.3));
   flameGlow.material.color.lerp(chHue,.03);
-  fireLight.intensity=flameRamp*(2.2+fl(5)*1.1);
+  fireLight.intensity=ramp*(2.2+fl(5)*1.1);
   fireLight.color.lerp(chHue,.04);
   sandU.uFireI.value=flameRamp;
   logs.forEach(l=>{if(l.material.emissive)l.material.emissive.lerp(chHue.clone().multiplyScalar(.25*flameRamp),.02)});
@@ -1393,11 +1730,19 @@ function animate(){
   updateClouds(dt);
   updateGulls(el,dt);
   updateAmbientParticles(dt);
+  updateAudioListener();
 
   // Head tracking takes over camera orientation in an active WebXR session;
   // the manual seated drag-camera only runs outside of VR.
-  if(!renderer.xr.isPresenting)updCam();
-  renderer.render(scene,cam);
+  if(renderer.xr.isPresenting){
+    renderer.render(scene,cam); // XR owns the framebuffer directly; skip the 2D composite pass
+  }else{
+    updCam();
+    renderer.setRenderTarget(sceneRT);
+    renderer.render(scene,cam);
+    renderer.setRenderTarget(null);
+    renderer.render(compScene,compCam);
+  }
 }
 applyTheme(currentBiome); // initialize decor/particles/ocean for the default selection
 renderer.setAnimationLoop(animate);
