@@ -250,7 +250,8 @@ const oceanU={
   uTime:{value:0},
   uDeep:{value:new THREE.Color(PAL.oceanDeep)},
   uShallow:{value:new THREE.Color(PAL.oceanShallow)},
-  uChakra:{value:new THREE.Color(0x224466)}
+  uChakra:{value:new THREE.Color(0x224466)},
+  uSandWet:{value:new THREE.Color(PAL.sandWet)}
 };
 const ocean=new THREE.Mesh(new THREE.PlaneGeometry(300,400,oSegX,oSegY),new THREE.ShaderMaterial({
   uniforms:oceanU,transparent:true,depthWrite:true,
@@ -295,18 +296,18 @@ const ocean=new THREE.Mesh(new THREE.PlaneGeometry(300,400,oSegX,oSegY),new THRE
     // which is close enough to read correctly without a real fluid sim.
     float seafloorDepth(float y){
       float shelf=clamp((200.0-y)/260.0,0.05,1.0);
-      float bar1=exp(-pow((y-30.0)/22.0,2.0))*0.55;
-      float bar2=exp(-pow((y-150.0)/30.0,2.0))*0.4;
+      float bar1=exp(-pow((y-90.0)/20.0,2.0))*0.4;
+      float bar2=exp(-pow((y-170.0)/26.0,2.0))*0.3;
       return clamp(shelf-bar1-bar2,0.0,1.4);
     }
     void main(){
       vXY=position.xy;
       float x=position.x,y=position.y;
-      float shoreT=smoothstep(-200.,-120.,y);
+      float shoreT=smoothstep(-200.,-80.,y);
 
       float depth=seafloorDepth(y);
       vDepth=depth;
-      float shoalAmp=clamp(1.0/sqrt(max(depth,0.22)),0.7,2.0);
+      float shoalAmp=clamp(1.0/sqrt(max(depth,0.22)),0.7,1.6);
       // Shallow water also slows a wave down (celerity ~ sqrt(depth) in
       // the shallow-water approximation) — the same shoaling that lifts
       // the amplitude makes the swell visibly arrive slower as it closes
@@ -338,7 +339,7 @@ const ocean=new THREE.Mesh(new THREE.PlaneGeometry(300,400,oSegX,oSegY),new THRE
 
       gl_Position=projectionMatrix*modelViewMatrix*vec4(x,y,h,1.0);
     }`,
-  fragmentShader:`uniform vec3 uDeep;uniform vec3 uShallow;uniform vec3 uChakra;
+  fragmentShader:`uniform vec3 uDeep;uniform vec3 uShallow;uniform vec3 uChakra;uniform vec3 uSandWet;
     varying vec2 vXY;varying float vH;varying float vFoam;varying float vDepth;
     void main(){
       float s=clamp(vH*1.6+0.5,0.0,1.0);
@@ -351,11 +352,23 @@ const ocean=new THREE.Mesh(new THREE.PlaneGeometry(300,400,oSegX,oSegY),new THRE
       float glint=pow(max(0.0,1.0-abs(vH)*2.2),22.0);
       col+=uChakra*pow(max(0.0,1.0-abs(vH)*2.2),6.0)*0.22+vec3(1.0,0.92,0.75)*glint*0.65;
       col=mix(col,vec3(0.92,0.95,0.98),clamp(vFoam,0.0,1.0)*0.85);
-      gl_FragColor=vec4(col,0.95);
+      // N64-style shoreline: instead of the mesh clipping hard against the
+      // sand, the water swaps toward the sand's own wet colour as it nears
+      // its edge, then dissolves to transparent — a soft alpha "colour
+      // swap" blend rather than a precise geometric intersection, so the
+      // hand-off into the sand's wet/swash colouring reads as continuous.
+      float edgeFade=smoothstep(-200.0,-196.0,vXY.y);
+      // The colour swap itself ramps in over a much wider band than the
+      // alpha fade: real shallows read the sandy bottom through the water
+      // well before the shoreline, so the hand-off is a visible gradient
+      // across many pixels rather than a last-instant snap at the seam.
+      float colorSwapT=1.0-smoothstep(-200.0,-120.0,vXY.y);
+      col=mix(col,uSandWet,colorSwapT*0.6);
+      gl_FragColor=vec4(col,0.95*edgeFade);
     }`
 }));
 ocean.rotation.x=-Math.PI/2;
-ocean.position.set(0,-0.05,-206);
+ocean.position.set(0,-0.05,-202);
 scene.add(ocean);
 
 // ── SAND ─────────────────────────────────────────────────────────────────────
@@ -929,6 +942,7 @@ function updateEnvironmentColors(chHue,chComp,ci){
   sandU.uBase.value.lerp(_tmp,.015);
   _tmp.copy(new THREE.Color(PAL.sandWet)).lerp(chComp,ci*.35);
   sandU.uWet.value.lerp(_tmp,.015);
+  oceanU.uSandWet.value.lerp(_tmp,.015);
   sandU.uGlow.value.lerp(chHue,.04);
 }
 
