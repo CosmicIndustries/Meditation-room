@@ -74,11 +74,16 @@ Kept deliberately "N64-era": flat low-poly primitives, no photorealism, no exter
 
 * Real shadow mapping off the sun (soft PCF shadows cast by decor and the campfire onto the ground)
 * A height-differential "bump" normal on the ground, computed analytically from the same noise that displaces it, so lighting reads the terrain's relief instead of a flat plane
-* A small procedurally-painted, mip-mapped splat-bitmap texture blended into the ground, so fine detail stops shimmering near the horizon the way pure analytic shader noise does
+* A genuinely high-resolution, mip-mapped ground detail texture generated from real SVG (`feTurbulence`, SVG's own procedural-noise primitive) rather than a hand-rolled dot pattern or a flat shader hash — rasterized once, so fine detail stops shimmering near the horizon the way pure analytic shader noise does
 * A hand-rolled single-pass composite (no external postprocessing library): a cheap few-tap bloom around bright pixels, plus a per-pixel dither on the output — the same trick the N64 used to fake extra colour depth on its 21-bit framebuffer, here smoothing banding instead
 * Lowered-roughness materials so directional sunlight actually produces visible specular highlights on rocks/decor
+* A handful of low-poly flora/fauna archetypes (bushes; a generic deer/fox/goat-ish quadruped rig) scattered into a few fitting biomes at a count of one or two — ambient life going about its own business in the background, not a petting zoo
 
 True volumetric ray-marching was deliberately left out — it's a real cost center that would hurt mobile framerate across 42 biomes for a look this style doesn't need; the bloom + dither composite delivers most of the same "it looks considered" payoff far more cheaply.
+
+### Adaptive performance
+
+Quality is picked from device heuristics (GPU renderer string, CPU core count, device memory, mobile UA) into one of three tiers — potato / medium / high — which scale geometry segment counts, shadow resolution, decor/particle/cloud/fauna counts, pixel ratio, antialiasing, and whether the shadow map and bloom/dither composite pass run at all. Device strings only ever give a starting guess, so a live watchdog also watches actual measured frame time and steps quality **down** (cheapest cost first: composite pass, then shadows, then resolution) if the device can't sustain it — never back up, to avoid visible flicker. Fog and per-object frustum culling (Three.js's default) do the rest of the heavy lifting on weaker hardware.
 
 ### Audio
 

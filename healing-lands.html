@@ -188,7 +188,38 @@ const CK=[
 const ISO_HZ=[2,6,8,10,12,40,40];
 
 const isMobile=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)||window.innerWidth<900;
-const PR=Math.min(devicePixelRatio,isMobile?1.5:2.0);
+
+// ── ADAPTIVE QUALITY ─────────────────────────────────────────────────────────
+// Device strings lie (or don't exist) — a UA sniff or navigator.deviceMemory
+// is only ever a starting guess. The real signal is measured frame time, so
+// a tier is picked here from cheap heuristics, then watched live in the
+// animate loop (see degradeQuality below) and stepped DOWN if the frame
+// budget isn't actually being met — fog, culling, entity counts, shadow/
+// post-process cost and resolution all scale off the same tier, so a potato
+// device sheds cost and a strong one keeps the full N64-plus-plus look.
+function detectGPURenderer(){
+  try{
+    const cnv=document.createElement('canvas');
+    const gl=cnv.getContext('webgl')||cnv.getContext('experimental-webgl');
+    const dbg=gl&&gl.getExtension('WEBGL_debug_renderer_info');
+    return dbg?String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)):'';
+  }catch(e){return '';}
+}
+const gpuRenderer=detectGPURenderer();
+const isSoftwareRenderer=/swiftshader|llvmpipe|software|microsoft basic render|angle \(.*software/i.test(gpuRenderer);
+const lowMemory=(navigator.deviceMemory||4)<=2;
+const fewCores=(navigator.hardwareConcurrency||4)<=2;
+
+const QUALITY=[ // 0: potato  1: medium  2: high
+  {shadows:false,shadowSize:512, composite:false,pixelRatioCap:1.0,antialias:false,decorMul:.4, particleMul:.3,cloudMul:.5, faunaMul:0,  gullMul:.5,oceanSeg:[26,32], sandSeg:20,embMul:.4,smkMul:.4},
+  {shadows:true, shadowSize:512, composite:true, pixelRatioCap:1.5,antialias:false,decorMul:.7, particleMul:.6,cloudMul:.7, faunaMul:.6, gullMul:.75,oceanSeg:[60,70], sandSeg:40,embMul:.7,smkMul:.7},
+  {shadows:true, shadowSize:1024,composite:true, pixelRatioCap:2.0,antialias:true, decorMul:1,  particleMul:1, cloudMul:1,  faunaMul:1,  gullMul:1,  oceanSeg:[100,130],sandSeg:70,embMul:1, smkMul:1},
+];
+let qTier=2;
+if(isMobile||lowMemory||fewCores)qTier=1;
+if(isSoftwareRenderer&&(isMobile||lowMemory||fewCores))qTier=0;
+let Q=QUALITY[qTier];
+const PR=Math.min(devicePixelRatio,Q.pixelRatioCap);
 
 function complementOf(hex,sMul,lAdd){
   const c=new THREE.Color(hex),h={};c.getHSL(h);
@@ -225,7 +256,7 @@ function hashSeed(str){
 const worldRng=makeRNG(hashSeed('healing-lands-world')); // one-time scenery shared by every biome
 
 // ── RENDERER / SCENE / CAMERA ───────────────────────────────────────────────
-const renderer=new THREE.WebGLRenderer({antialias:!isMobile,powerPreference:'high-performance',alpha:false});
+const renderer=new THREE.WebGLRenderer({antialias:Q.antialias,powerPreference:'high-performance',alpha:false});
 renderer.setSize(innerWidth,innerHeight);
 renderer.setPixelRatio(PR);
 renderer.outputEncoding=THREE.sRGBEncoding;
@@ -233,8 +264,9 @@ renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=1.08;
 renderer.xr.enabled=true;
 // Cheap shadows: a low-res shadow map off the sun is enough for this scene's
-// scale (fire pit + nearby decor), kept soft rather than sharp-edged.
-renderer.shadowMap.enabled=true;
+// scale (fire pit + nearby decor), kept soft rather than sharp-edged. Off
+// entirely on the potato tier — an extra shadow render pass is real cost.
+renderer.shadowMap.enabled=Q.shadows;
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
@@ -252,44 +284,49 @@ scene.fog=new THREE.FogExp2(0x1b2a44,0.0062);
 // Three.js's XR manager needs to own the framebuffer directly.
 const hasMSRT='WebGLMultisampleRenderTarget' in THREE;
 function makeSceneRT(w,h){
-  return (hasMSRT&&!isMobile)
+  return (hasMSRT&&Q.antialias)
     ? new THREE.WebGLMultisampleRenderTarget(w,h,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter})
     : new THREE.WebGLRenderTarget(w,h,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter});
 }
-let sceneRT=makeSceneRT(innerWidth*PR,innerHeight*PR);
-const compU={tDiffuse:{value:sceneRT.texture},uRes:{value:new THREE.Vector2(innerWidth*PR,innerHeight*PR)},uBloom:{value:1.0}};
-const compScene=new THREE.Scene();
-const compCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
-const compQuad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.ShaderMaterial({
-  uniforms:compU,depthTest:false,depthWrite:false,
-  vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`,
-  fragmentShader:`uniform sampler2D tDiffuse;uniform vec2 uRes;uniform float uBloom;
-    varying vec2 vUv;
-    float hash(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
-    void main(){
-      vec2 texel=1.0/uRes;
-      vec3 col=texture2D(tDiffuse,vUv).rgb;
-      vec3 s1=texture2D(tDiffuse,vUv+vec2(1.5,1.5)*texel*2.2).rgb;
-      vec3 s2=texture2D(tDiffuse,vUv+vec2(-1.5,1.5)*texel*2.2).rgb;
-      vec3 s3=texture2D(tDiffuse,vUv+vec2(1.5,-1.5)*texel*2.2).rgb;
-      vec3 s4=texture2D(tDiffuse,vUv+vec2(-1.5,-1.5)*texel*2.2).rgb;
-      vec3 lw=vec3(.299,.587,.114);
-      vec3 bloom=s1*smoothstep(.65,1.3,dot(s1,lw))+s2*smoothstep(.65,1.3,dot(s2,lw))
-                +s3*smoothstep(.65,1.3,dot(s3,lw))+s4*smoothstep(.65,1.3,dot(s4,lw));
-      col+=bloom*0.14*uBloom;
-      float d=hash(gl_FragCoord.xy)-0.5;
-      float levels=46.0;
-      col=floor(col*levels+0.5+d)/levels;
-      gl_FragColor=vec4(col,1.0);
-    }`
-}));
-compScene.add(compQuad);
+let sceneRT=null,compScene=null,compCam=null,compU=null;
+if(Q.composite){
+  sceneRT=makeSceneRT(innerWidth*PR,innerHeight*PR);
+  compU={tDiffuse:{value:sceneRT.texture},uRes:{value:new THREE.Vector2(innerWidth*PR,innerHeight*PR)},uBloom:{value:1.0}};
+  compScene=new THREE.Scene();
+  compCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+  const compQuad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.ShaderMaterial({
+    uniforms:compU,depthTest:false,depthWrite:false,
+    vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`,
+    fragmentShader:`uniform sampler2D tDiffuse;uniform vec2 uRes;uniform float uBloom;
+      varying vec2 vUv;
+      float hash(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
+      void main(){
+        vec2 texel=1.0/uRes;
+        vec3 col=texture2D(tDiffuse,vUv).rgb;
+        vec3 s1=texture2D(tDiffuse,vUv+vec2(1.5,1.5)*texel*2.2).rgb;
+        vec3 s2=texture2D(tDiffuse,vUv+vec2(-1.5,1.5)*texel*2.2).rgb;
+        vec3 s3=texture2D(tDiffuse,vUv+vec2(1.5,-1.5)*texel*2.2).rgb;
+        vec3 s4=texture2D(tDiffuse,vUv+vec2(-1.5,-1.5)*texel*2.2).rgb;
+        vec3 lw=vec3(.299,.587,.114);
+        vec3 bloom=s1*smoothstep(.65,1.3,dot(s1,lw))+s2*smoothstep(.65,1.3,dot(s2,lw))
+                  +s3*smoothstep(.65,1.3,dot(s3,lw))+s4*smoothstep(.65,1.3,dot(s4,lw));
+        col+=bloom*0.14*uBloom;
+        float d=hash(gl_FragCoord.xy)-0.5;
+        float levels=46.0;
+        col=floor(col*levels+0.5+d)/levels;
+        gl_FragColor=vec4(col,1.0);
+      }`
+  }));
+  compScene.add(compQuad);
+}
 
 addEventListener('resize',()=>{
   cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
-  sceneRT.setSize(innerWidth*PR,innerHeight*PR);
-  compU.uRes.value.set(innerWidth*PR,innerHeight*PR);
+  if(Q.composite){
+    sceneRT.setSize(innerWidth*PR,innerHeight*PR);
+    compU.uRes.value.set(innerWidth*PR,innerHeight*PR);
+  }
 });
 
 // Seated camera behind the fire, facing the ocean. Limited drag so the
@@ -326,7 +363,7 @@ dom.addEventListener('touchmove',e=>{const t=e.touches[0];cAzT=Math.max(-.42,Mat
 const BIOMES=[
   {id:'pine-forest', name:'Pine Forest', cat:'terrestrial',
    sky:{h:0.58,s:0.45}, ground:{h:0.33,s:0.35,l:0.28}, water:null,
-   wetGround:false, decor:['spike','log','rock'], tint:0x2f3a28, density:1.4,
+   wetGround:false, decor:['spike','log','rock','bush','quadruped'], tint:0x2f3a28, density:1.4,
    particle:{type:'pollen',color:0xcfe8a0,count:120,speed:0.3,spread:45}, windBrightness:0.4},
   {id:'desert-dunes', name:'Desert Dunes', cat:'terrestrial',
    sky:{h:0.11,s:0.5}, ground:{h:0.09,s:0.55,l:0.62}, water:null,
@@ -334,7 +371,7 @@ const BIOMES=[
    particle:{type:'dust',color:0xe8c99a,count:150,speed:0.6,spread:60}, windBrightness:0.85},
   {id:'alpine-tundra', name:'Alpine Tundra', cat:'terrestrial',
    sky:{h:0.56,s:0.3}, ground:{h:0.15,s:0.08,l:0.78}, water:null,
-   wetGround:false, decor:['rock','spike'], tint:0x8a9a95, density:0.6,
+   wetGround:false, decor:['rock','spike','quadruped'], tint:0x8a9a95, density:0.6,
    particle:{type:'snow',color:0xffffff,count:140,speed:0.4,spread:50}, windBrightness:0.9},
   {id:'mountain-summit', name:'Mountain Summit', cat:'terrestrial',
    sky:{h:0.57,s:0.4}, ground:{h:0.6,s:0.05,l:0.7}, water:null,
@@ -342,11 +379,11 @@ const BIOMES=[
    particle:{type:'snow',color:0xf5f5ff,count:100,speed:0.5,spread:55}, windBrightness:1.0},
   {id:'savanna-plains', name:'Savanna Plains', cat:'terrestrial',
    sky:{h:0.13,s:0.4}, ground:{h:0.12,s:0.45,l:0.52}, water:null,
-   wetGround:false, decor:['rock','log'], tint:0xc2a24a, density:0.5,
+   wetGround:false, decor:['rock','log','bush','quadruped'], tint:0xc2a24a, density:0.5,
    particle:{type:'pollen',color:0xe8d48a,count:90,speed:0.35,spread:50}, windBrightness:0.75},
   {id:'rainforest-canopy', name:'Rainforest Canopy', cat:'terrestrial',
    sky:{h:0.42,s:0.35}, ground:{h:0.36,s:0.55,l:0.24}, water:null,
-   wetGround:true, decor:['log','spike','rock'], tint:0x1f4a2e, density:1.8,
+   wetGround:true, decor:['log','spike','rock','bush'], tint:0x1f4a2e, density:1.8,
    particle:{type:'spores',color:0x9fe8a0,count:160,speed:0.25,spread:40}, windBrightness:0.3},
   {id:'volcanic-highlands', name:'Volcanic Highlands', cat:'terrestrial',
    sky:{h:0.05,s:0.5}, ground:{h:0.02,s:0.4,l:0.14}, water:null,
@@ -362,7 +399,7 @@ const BIOMES=[
    particle:{type:'bioluminescence',color:0x7ad8ff,count:110,speed:0.2,spread:35}, windBrightness:0.15},
   {id:'bamboo-grove', name:'Bamboo Grove', cat:'terrestrial',
    sky:{h:0.3,s:0.3}, ground:{h:0.28,s:0.3,l:0.34}, water:null,
-   wetGround:false, decor:['spike','rock','log'], tint:0x4a6a34, density:1.5,
+   wetGround:false, decor:['spike','rock','log','bush'], tint:0x4a6a34, density:1.5,
    particle:{type:'leaves',color:0x9ac25a,count:95,speed:0.3,spread:40}, windBrightness:0.5},
   {id:'coastal-shore', name:'Coastal Shore', cat:'aquatic',
    sky:{h:0.58,s:0.55}, ground:{h:0.11,s:0.42,l:0.74}, water:{h:0.52,s:0.55},
@@ -390,11 +427,11 @@ const BIOMES=[
    particle:{type:'spores',color:0xcfe8c0,count:80,speed:0.4,spread:40}, windBrightness:0.7},
   {id:'misty-wetland', name:'Misty Wetland', cat:'aquatic',
    sky:{h:0.4,s:0.2}, ground:{h:0.3,s:0.3,l:0.26}, water:{h:0.35,s:0.3},
-   wetGround:true, decor:['log','rock'], tint:0x3a4028, density:1.1,
+   wetGround:true, decor:['log','rock','bush'], tint:0x3a4028, density:1.1,
    particle:{type:'spores',color:0x9ab07a,count:100,speed:0.25,spread:40}, windBrightness:0.3},
   {id:'mangrove-shallows', name:'Mangrove Shallows', cat:'aquatic',
    sky:{h:0.45,s:0.3}, ground:{h:0.32,s:0.4,l:0.28}, water:{h:0.42,s:0.35},
-   wetGround:true, decor:['log','rock','spike'], tint:0x2f4a3a, density:1.3,
+   wetGround:true, decor:['log','rock','spike','bush'], tint:0x2f4a3a, density:1.3,
    particle:{type:'fireflies',color:0xdfff9a,count:90,speed:0.2,spread:35}, windBrightness:0.35},
   {id:'kelp-forest', name:'Kelp Forest', cat:'aquatic',
    sky:{h:0.62,s:0.2}, ground:{h:0.4,s:0.35,l:0.2}, water:{h:0.48,s:0.5},
@@ -431,7 +468,9 @@ const BIOMES=[
   {id:'storm-eye', name:'Eye of the Storm', cat:'air',
    sky:{h:0.6,s:0.3}, ground:{h:0.58,s:0.1,l:0.5}, water:null,
    wetGround:false, decor:['ring','pillar'], tint:0x8a98a8, density:0.5,
-   particle:{type:'rain',color:0xaad0e8,count:90,speed:0.8,spread:60}, windBrightness:0.95},
+   // The eye of a storm is famously the calm, still center the walls of
+   // weather circle around — low windBrightness on purpose, not high.
+   particle:{type:'rain',color:0xaad0e8,count:70,speed:0.5,spread:60}, windBrightness:0.35},
   {id:'celestial-temple', name:'Celestial Temple', cat:'air',
    sky:{h:0.62,s:0.3}, ground:{h:0.14,s:0.1,l:0.75}, water:null,
    wetGround:false, decor:['pillar','ring'], tint:0xf0e2b0, density:0.6,
@@ -446,11 +485,11 @@ const BIOMES=[
    particle:{type:'dust',color:0xe8f0ff,count:100,speed:0.5,spread:65}, windBrightness:1.0},
   {id:'giants-garden', name:"Giant's Garden", cat:'misc',
    sky:{h:0.55,s:0.4}, ground:{h:0.28,s:0.45,l:0.32}, water:null,
-   wetGround:false, decor:['log','rock','pillar'], tint:0x4a6a2a, density:1.0,
+   wetGround:false, decor:['log','rock','pillar','bush','quadruped'], tint:0x4a6a2a, density:1.0,
    particle:{type:'pollen',color:0xd8e89a,count:100,speed:0.25,spread:70}, windBrightness:0.6},
   {id:'dewdrop-meadow', name:'Dewdrop Meadow', cat:'misc',
    sky:{h:0.4,s:0.3}, ground:{h:0.3,s:0.4,l:0.3}, water:{h:0.52,s:0.4},
-   wetGround:true, decor:['spike','crystal','rock'], tint:0x7ac26a, density:1.6,
+   wetGround:true, decor:['spike','crystal','rock','bush'], tint:0x7ac26a, density:1.6,
    particle:{type:'pollen',color:0xcfe88a,count:130,speed:0.2,spread:30}, windBrightness:0.45},
   {id:'quantum-foam', name:'Quantum Foam', cat:'misc',
    sky:{h:0.78,s:0.2}, ground:{h:0.75,s:0.15,l:0.15}, water:null,
@@ -489,9 +528,12 @@ const BIOMES=[
    wetGround:false, decor:['pillar','log','crystal'], tint:0x4a3a6a, density:1.2,
    particle:{type:'fireflies',color:0xc2a0ff,count:100,speed:0.2,spread:40}, windBrightness:0.3},
   {id:'glass-desert', name:'Glass Desert', cat:'misc',
-   sky:{h:0.14,s:0.35}, ground:{h:0.55,s:0.15,l:0.7}, water:null,
-   wetGround:false, decor:['crystal','spike','rock'], tint:0xbfe8f0, density:0.5,
-   particle:{type:'dust',color:0xeaf6ff,count:100,speed:0.4,spread:60}, windBrightness:0.85},
+   // Real fused-silica desert glass (e.g. Libyan Desert Glass) is a pale
+   // yellow-green, not blue — distinct from arctic-ice's pale ice-blue
+   // rather than an accidental repeat of it.
+   sky:{h:0.14,s:0.35}, ground:{h:0.21,s:0.3,l:0.72}, water:null,
+   wetGround:false, decor:['crystal','spike','rock'], tint:0xd6e89a, density:0.5,
+   particle:{type:'dust',color:0xeaf6c8,count:100,speed:0.4,spread:60}, windBrightness:0.85},
 ];
 
 function hslHex(h,s,l){
@@ -580,7 +622,7 @@ scene.add(sky);
 
 const sunLight=new THREE.DirectionalLight(PAL.sun,1.15);
 sunLight.castShadow=true;
-sunLight.shadow.mapSize.set(isMobile?512:1024,isMobile?512:1024);
+sunLight.shadow.mapSize.set(Q.shadowSize,Q.shadowSize);
 sunLight.shadow.camera.left=-28;sunLight.shadow.camera.right=28;
 sunLight.shadow.camera.top=28;sunLight.shadow.camera.bottom=-28;
 sunLight.shadow.camera.near=60;sunLight.shadow.camera.far=160;
@@ -598,7 +640,7 @@ const sunHalo=new THREE.Mesh(new THREE.CircleGeometry(7,24),new THREE.MeshBasicM
 sunHalo.renderOrder=1;scene.add(sunHalo);
 
 // ── OCEAN ────────────────────────────────────────────────────────────────────
-const oSegX=isMobile?60:100, oSegY=isMobile?70:130;
+const oSegX=Q.oceanSeg[0], oSegY=Q.oceanSeg[1];
 const oceanU={
   uTime:{value:0},
   uDeep:{value:new THREE.Color(PAL.oceanDeep)},
@@ -727,7 +769,7 @@ scene.add(ocean);
 // shifting wave mesh reads as a rendering glitch, not a cast shadow)
 
 // ── SAND ─────────────────────────────────────────────────────────────────────
-const sSeg=isMobile?40:70;
+const sSeg=Q.sandSeg;
 const sandU={
   uBase:{value:new THREE.Color(PAL.sandBase)},
   uWet:{value:new THREE.Color(PAL.sandWet)},
@@ -736,31 +778,34 @@ const sandU={
   uTime:{value:0},
   uWetOn:{value:1}
 };
-// A small procedurally-painted "splat" bitmap (soft blurred dots, baked
-// once to a canvas) gives the ground real mip-mapped texture detail —
-// unlike pure analytic shader noise, a mipmapped bitmap stops shimmering
-// once it's small on screen near the horizon.
+// A genuine SVG-generated "splat" texture — feTurbulence is SVG's own
+// procedural noise primitive, rendered here at a high resolution (scaled
+// down a tier on weaker hardware) and rasterized once into a canvas, rather
+// than a hand-rolled dot pattern. Real mip-mapping then means this stops
+// shimmering once it's small on screen near the horizon, the way pure
+// analytic shader noise doesn't. Image decoding is async, so the texture
+// exists (as a neutral placeholder) immediately and swaps in once the SVG
+// has rasterized a frame or two later — nothing else waits on it.
 function makeSplatTexture(size,seedStr){
   const cnv=document.createElement('canvas');cnv.width=cnv.height=size;
   const ctx=cnv.getContext('2d');
   ctx.fillStyle='#808080';ctx.fillRect(0,0,size,size);
-  const rng=makeRNG(hashSeed(seedStr));
-  for(let i=0;i<size*2.2;i++){
-    const x=rng()*size,y=rng()*size,r=1+rng()*2.6;
-    const v=Math.floor(70+rng()*160);
-    const g=ctx.createRadialGradient(x,y,0,x,y,r);
-    g.addColorStop(0,`rgba(${v},${v},${v},0.55)`);
-    g.addColorStop(1,'rgba(128,128,128,0)');
-    ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2);
-  }
   const tex=new THREE.CanvasTexture(cnv);
   tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
   tex.generateMipmaps=true;
   tex.minFilter=THREE.LinearMipmapLinearFilter;
   tex.magFilter=THREE.LinearFilter;
+  const seed=hashSeed(seedStr)%1000;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">`
+    +`<filter id="n" x="0" y="0" width="100%" height="100%">`
+    +`<feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" seed="${seed}" stitchTiles="stitch"/>`
+    +`</filter><rect width="100%" height="100%" filter="url(#n)"/></svg>`;
+  const img=new Image();
+  img.onload=()=>{ctx.drawImage(img,0,0,size,size);tex.needsUpdate=true;};
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
   return tex;
 }
-const groundSplat=makeSplatTexture(128,'ground-splat');
+const groundSplat=makeSplatTexture([256,384,512][qTier],'ground-splat');
 sandU.uGrain={value:groundSplat};
 
 // The ground uses MeshStandardMaterial (via onBeforeCompile) rather than a
@@ -836,12 +881,15 @@ sand.receiveShadow=true;
 scene.add(sand);
 
 // ── DECOR: theme-driven prop scattering ──────────────────────────────────────
-// Six low-poly archetypes built from primitive geometry only (no external
+// Eight low-poly archetypes built from primitive geometry only (no external
 // assets), reused across biomes — 'rock'/'crystal' read as boulders, gems,
 // ice or alien pods; 'spike' as trees, stalagmites or mountains; 'pillar' as
-// columns or ruins; 'ring' as portals, coral rings or halos — depending on
-// each biome's tint and placement density.
-const DECOR_BASE_COUNT={rock:14,log:4,crystal:11,spike:10,pillar:6,ring:4};
+// columns or ruins; 'ring' as portals, coral rings or halos; 'bush' as low
+// ground flora; 'quadruped' as a generic deer/wolf/fox/goat-ish silhouette —
+// depending on each biome's tint and placement density. Fauna is kept to a
+// handful of biomes at a count of one or two: ambient life going about its
+// own business in the background, not a petting zoo.
+const DECOR_BASE_COUNT={rock:14,log:4,crystal:11,spike:10,pillar:6,ring:4,bush:7,quadruped:1};
 function makeDecorMesh(type,mat,rng){
   switch(type){
     case 'log': return new THREE.Mesh(new THREE.CylinderGeometry(.14,.18,2.2+rng()*1.0,7),mat);
@@ -849,29 +897,71 @@ function makeDecorMesh(type,mat,rng){
     case 'spike': return new THREE.Mesh(new THREE.ConeGeometry(.2+rng()*.2,1.0+rng()*1.4,6),mat);
     case 'pillar': return new THREE.Mesh(new THREE.CylinderGeometry(.16,.22,1.8+rng()*1.8,8),mat);
     case 'ring': return new THREE.Mesh(new THREE.TorusGeometry(.32+rng()*.22,.08,8,16),mat);
+    case 'bush':{
+      const g=new THREE.Group();
+      const n=2+Math.floor(rng()*2);
+      for(let i=0;i<n;i++){
+        const m=new THREE.Mesh(new THREE.IcosahedronGeometry(.2+rng()*.14,0),mat);
+        m.position.set((rng()-.5)*.32,.09+rng()*.07,(rng()-.5)*.32);
+        m.scale.y=.55;
+        g.add(m);
+      }
+      return g;
+    }
+    case 'quadruped':{
+      // A generic low-poly quadruped rig (body/4 legs/head/tail) rather than
+      // a bespoke model per species — close enough at a glance, scattered
+      // at a count of one, to read as "a deer", "a fox", "a wild goat"
+      // depending on the biome's tint and scale, without needing a zoo of
+      // distinct rigs.
+      const g=new THREE.Group();
+      const scale=.75+rng()*.5;
+      const bodyLen=.55*scale,bodyR=.12*scale,legH=.3*scale,legR=.04*scale,halfW=.09*scale;
+      const body=new THREE.Mesh(new THREE.CylinderGeometry(bodyR,bodyR*.92,bodyLen,6),mat);
+      body.rotation.z=Math.PI/2;body.position.y=legH;
+      g.add(body);
+      [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([lx,lz])=>{
+        const leg=new THREE.Mesh(new THREE.CylinderGeometry(legR,legR*.8,legH,5),mat);
+        leg.position.set(lx*bodyLen*.32,legH/2,lz*halfW);
+        g.add(leg);
+      });
+      const head=new THREE.Mesh(new THREE.BoxGeometry(.15*scale,.13*scale,.2*scale),mat);
+      head.position.set(bodyLen*.55,legH+.08*scale,0);
+      g.add(head);
+      const tail=new THREE.Mesh(new THREE.ConeGeometry(.035*scale,.24*scale,5),mat);
+      tail.rotation.z=Math.PI/2+.35;
+      tail.position.set(-bodyLen*.6,legH+.05*scale,0);
+      g.add(tail);
+      g.userData.sway=rng()*Math.PI*2;
+      return g;
+    }
     default: return new THREE.Mesh(new THREE.IcosahedronGeometry(.18+rng()*.3,0),mat);
   }
 }
 const decorGroup=new THREE.Group();scene.add(decorGroup);
+const faunaGroups=[];
 let decorMat=null;
 function buildDecor(biome){
   while(decorGroup.children.length){
     const m=decorGroup.children.pop();
-    decorGroup.remove(m);m.geometry.dispose();
+    decorGroup.remove(m);m.traverse(c=>{if(c.isMesh)c.geometry.dispose();});
   }
+  faunaGroups.length=0;
   if(decorMat)decorMat.dispose();
   decorMat=new THREE.MeshStandardMaterial({color:biome.tint,roughness:.55}); // <1 so sun specular actually shows
   const types=(biome.decor&&biome.decor.length)?biome.decor:['rock'];
   const rng=makeRNG(hashSeed(biome.id)); // same biome -> same layout, every time
   types.forEach(type=>{
-    const n=Math.max(1,Math.round((DECOR_BASE_COUNT[type]||8)*biome.density));
-    const tall=type==='pillar'||type==='spike'||type==='ring';
+    if(type==='quadruped'&&Q.faunaMul<=0)return; // potato tier: skip fauna entirely
+    const mul=type==='quadruped'?Q.faunaMul:Q.decorMul;
+    const n=Math.max(1,Math.round((DECOR_BASE_COUNT[type]||8)*biome.density*mul));
+    const tall=type==='pillar'||type==='spike'||type==='ring'||type==='quadruped';
     for(let i=0;i<n;i++){
       const a=rng()*Math.PI*2,r=3+rng()*10;
       const x=Math.sin(a)*r,z=4+Math.cos(a)*r*0.7-2;
       if(Math.abs(x)<1.4&&z<2&&z>-1)continue; // keep fire pit clear
       const m=makeDecorMesh(type,decorMat,rng);
-      m.castShadow=true;m.receiveShadow=true;
+      m.traverse(c=>{if(c.isMesh){c.castShadow=true;c.receiveShadow=true;}});
       if(type==='log'){
         m.position.set(x,.15,z);m.rotation.z=Math.PI/2+rng()*.4;m.rotation.y=rng()*6;
       }else if(type==='ring'){
@@ -881,6 +971,7 @@ function buildDecor(biome){
       }else{
         m.position.set(x,.12,z);m.rotation.set(rng()*6,rng()*6,rng()*6);
       }
+      if(type==='quadruped'){m.userData.baseRotY=m.rotation.y;faunaGroups.push(m);}
       decorGroup.add(m);
     }
   });
@@ -928,7 +1019,7 @@ const fireLight=new THREE.PointLight(0xff8833,0,7);
 fireLight.position.set(0,.6,0);fireGrp.add(fireLight);
 
 // Embers
-const EMB_N=isMobile?36:60;
+const EMB_N=Math.max(8,Math.round(60*Q.embMul));
 const embPos=new Float32Array(EMB_N*3),embVel=new Float32Array(EMB_N*3),embAge=new Float32Array(EMB_N),embLife=new Float32Array(EMB_N);
 for(let i=0;i<EMB_N;i++){embPos[i*3+1]=-999;embAge[i]=1;}
 const embGeo=new THREE.BufferGeometry();const embAttr=new THREE.BufferAttribute(embPos,3);embGeo.setAttribute('position',embAttr);
@@ -945,7 +1036,7 @@ function spawnEmb(i){
 }
 
 // Smoke wisps
-const SMK_N=isMobile?10:18;
+const SMK_N=Math.max(4,Math.round(18*Q.smkMul));
 const smkPos=new Float32Array(SMK_N*3),smkAge=new Float32Array(SMK_N),smkLife=new Float32Array(SMK_N);
 for(let i=0;i<SMK_N;i++){smkPos[i*3+1]=-999;smkAge[i]=1;}
 const smkGeo=new THREE.BufferGeometry();const smkAttr=new THREE.BufferAttribute(smkPos,3);smkGeo.setAttribute('position',smkAttr);
@@ -959,7 +1050,7 @@ function spawnSmk(i){
 // ── CLOUDS — low-poly puff clusters drifting across the sky ─────────────────
 // A fixed pool so density can be set later (randomly, or from real cloud
 // cover) just by toggling visibility rather than creating/disposing meshes.
-const CLOUD_N=isMobile?6:10;
+const CLOUD_N=Math.max(2,Math.round(10*Q.cloudMul));
 const cloudGroups=[];
 const cloudMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.82,fog:true});
 for(let i=0;i<CLOUD_N;i++){
@@ -1008,7 +1099,7 @@ function makeGull(){
   grp.userData={pivotL,pivotR};
   return grp;
 }
-const GULL_N=4;
+const GULL_N=Math.max(1,Math.round(4*Q.gullMul));
 const gulls=[];
 for(let i=0;i<GULL_N;i++){
   const g=makeGull();
@@ -1034,6 +1125,17 @@ function updateGulls(el,dt){
     const flap=Math.sin(el*u.flapRate+u.flapPhase)*.85;
     u.pivotL.rotation.z=flap;
     u.pivotR.rotation.z=-flap;
+  });
+}
+
+// A cheap idle sway (head turning to look around, a faint breathing bob) so
+// the sparse ground fauna reads as alive rather than a frozen lawn statue,
+// without any real animation rig.
+function updateFauna(el){
+  faunaGroups.forEach(g=>{
+    const ph=g.userData.sway;
+    g.rotation.y=g.userData.baseRotY+Math.sin(el*.3+ph)*.08;
+    g.position.y=Math.sin(el*.9+ph)*.004;
   });
 }
 
@@ -1066,7 +1168,7 @@ function spawnAmb(i,fresh,rng){
 }
 function buildAmbientParticles(biome){
   const p=biome.particle||{count:0};
-  ambCount=Math.min(AMB_MAX,Math.round(p.count||0));
+  ambCount=Math.min(AMB_MAX,Math.round((p.count||0)*Q.particleMul));
   ambMotion=AMBIENT_MOTION[p.type]||{dir:0,drift:.5};
   ambSpeed=p.speed!==undefined?p.speed:.5;
   ambSpread=p.spread!==undefined?p.spread:40;
@@ -1712,11 +1814,35 @@ function updateSmoke(el,dt){
   smkMat.opacity=Math.min(.22,flameRamp*.25)*(1);
 }
 
+// Live performance watchdog: the tier chosen from device heuristics above
+// is only ever a starting guess, so this steps quality DOWN (one-way, never
+// back up — avoids visible flicker/thrashing) if measured frame time says
+// the device can't actually sustain it. Order matters: shed the post-process
+// composite pass first (cheapest to lose visually), then shadows, then
+// resolution itself, down to a 0.75 pixel-ratio floor.
+let curPR=PR,qDowngrades=0;
+function degradeQuality(){
+  if(qDowngrades===0&&Q.composite){Q.composite=false;qDowngrades=1;return;}
+  if(qDowngrades===1){if(renderer.shadowMap.enabled)renderer.shadowMap.enabled=false;qDowngrades=2;return;}
+  if(qDowngrades<6&&curPR>0.75){
+    curPR=Math.max(.75,curPR-.25);renderer.setPixelRatio(curPR);qDowngrades++;
+  }
+}
+let fpsAccum=0,fpsFrames=0,fpsCheckAt=performance.now()+4000; // skip startup jank
+function monitorPerf(now,dt){
+  fpsAccum+=dt;fpsFrames++;
+  if(now<fpsCheckAt)return;
+  const avgFrameMs=(fpsAccum/fpsFrames)*1000;
+  fpsAccum=0;fpsFrames=0;fpsCheckAt=now+2500;
+  if(avgFrameMs>38)degradeQuality(); // sustained under ~26fps
+}
+
 function animate(){
   const now=performance.now();
   const dt=Math.min(.05,(now-lastT)/1000);
   lastT=now;
   const el=now*.001;
+  monitorPerf(now,dt);
 
   updateSun(now,el);
   updateStageProgression(now,dt);
@@ -1729,6 +1855,7 @@ function animate(){
   updateSmoke(el,dt);
   updateClouds(dt);
   updateGulls(el,dt);
+  updateFauna(el);
   updateAmbientParticles(dt);
   updateAudioListener();
 
@@ -1738,10 +1865,14 @@ function animate(){
     renderer.render(scene,cam); // XR owns the framebuffer directly; skip the 2D composite pass
   }else{
     updCam();
-    renderer.setRenderTarget(sceneRT);
-    renderer.render(scene,cam);
-    renderer.setRenderTarget(null);
-    renderer.render(compScene,compCam);
+    if(Q.composite){
+      renderer.setRenderTarget(sceneRT);
+      renderer.render(scene,cam);
+      renderer.setRenderTarget(null);
+      renderer.render(compScene,compCam);
+    }else{
+      renderer.render(scene,cam); // potato tier: skip the extra offscreen pass entirely
+    }
   }
 }
 applyTheme(currentBiome); // initialize decor/particles/ocean for the default selection
