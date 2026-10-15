@@ -405,15 +405,15 @@ const BIOMES=[
    sky:{h:0.58,s:0.55}, ground:{h:0.11,s:0.42,l:0.74}, water:{h:0.52,s:0.55},
    wetGround:true, decor:['rock','log'], tint:0x2a2420, density:1.0,
    particle:{type:'spores',color:0xffe3c2,count:0,speed:0,spread:0}, windBrightness:0.6},
-  {id:'coral-reef', name:'Coral Reef', cat:'aquatic',
+  {id:'coral-reef', name:'Coral Reef', cat:'aquatic', submerged:true,
    sky:{h:0.55,s:0.5}, ground:{h:0.08,s:0.5,l:0.68}, water:{h:0.48,s:0.6},
-   wetGround:true, decor:['ring','rock','crystal'], tint:0xff7a5c, density:1.1,
+   wetGround:false, decor:['ring','rock','crystal'], tint:0xff7a5c, density:1.1,
    particle:{type:'bubbles',color:0xbff0ff,count:120,speed:0.5,spread:40}, windBrightness:0.5},
   {id:'arctic-ice', name:'Arctic Ice Field', cat:'aquatic',
    sky:{h:0.57,s:0.25}, ground:{h:0.55,s:0.1,l:0.85}, water:{h:0.54,s:0.4},
    wetGround:true, decor:['spike','crystal','rock'], tint:0xbfe8f0, density:0.5,
    particle:{type:'snow',color:0xffffff,count:130,speed:0.45,spread:55}, windBrightness:0.95},
-  {id:'abyssal-deep', name:'Abyssal Deep', cat:'aquatic',
+  {id:'abyssal-deep', name:'Abyssal Deep', cat:'aquatic', submerged:true,
    sky:{h:0.65,s:0.15}, ground:{h:0.68,s:0.2,l:0.08}, water:{h:0.64,s:0.3},
    wetGround:false, decor:['rock','crystal','pillar'], tint:0x1a2a3a, density:0.5,
    particle:{type:'bioluminescence',color:0x4ad8e8,count:150,speed:0.2,spread:50}, windBrightness:0.1},
@@ -433,11 +433,11 @@ const BIOMES=[
    sky:{h:0.45,s:0.3}, ground:{h:0.32,s:0.4,l:0.28}, water:{h:0.42,s:0.35},
    wetGround:true, decor:['log','rock','spike','bush'], tint:0x2f4a3a, density:1.3,
    particle:{type:'fireflies',color:0xdfff9a,count:90,speed:0.2,spread:35}, windBrightness:0.35},
-  {id:'kelp-forest', name:'Kelp Forest', cat:'aquatic',
+  {id:'kelp-forest', name:'Kelp Forest', cat:'aquatic', submerged:true,
    sky:{h:0.62,s:0.2}, ground:{h:0.4,s:0.35,l:0.2}, water:{h:0.48,s:0.5},
    wetGround:false, decor:['spike','rock','crystal'], tint:0x2a6a4a, density:1.4,
    particle:{type:'bubbles',color:0xaef0e0,count:140,speed:0.35,spread:45}, windBrightness:0.2},
-  {id:'hydrothermal-vent', name:'Hydrothermal Vent', cat:'aquatic',
+  {id:'hydrothermal-vent', name:'Hydrothermal Vent', cat:'aquatic', submerged:true,
    sky:{h:0.68,s:0.15}, ground:{h:0.05,s:0.3,l:0.15}, water:{h:0.6,s:0.25},
    wetGround:false, decor:['pillar','rock','crystal'], tint:0x6a3a2a, density:0.9,
    particle:{type:'bubbles',color:0xffb070,count:110,speed:0.5,spread:40}, windBrightness:0.15},
@@ -551,10 +551,15 @@ function hslHex(h,s,l){
 const TOD_HOURS=[0,5,7,12,17,19,21,24];
 const TOD_SUN_H=[-.30,-.05,.12,.85,.35,.08,-.08,-.30];
 function buildTOD(biome){
+  // Fully-submerged biomes (open ocean depth, not a shoreline) never get a
+  // bright sunlit "noon" regardless of the real time of day — daylight
+  // doesn't reach the sea floor like that — so their day/dawn brightness
+  // curve is capped well below a normal open-sky one.
+  const cap=biome.submerged?0.4:1.0;
   return TOD_HOURS.map((hr,i)=>{
     const sh=TOD_SUN_H[i];
-    const day=THREE.MathUtils.clamp(sh*0.9+0.35,0,1);        // 0 at night, ~1 at noon
-    const dawn=Math.max(0,1-Math.abs(sh)*2.2);               // peaks near sunrise/sunset
+    const day=THREE.MathUtils.clamp(sh*0.9+0.35,0,1)*cap;    // 0 at night, ~1 at noon (capped if submerged)
+    const dawn=Math.max(0,1-Math.abs(sh)*2.2)*cap;           // peaks near sunrise/sunset
     const zenith=hslHex(biome.sky.h,biome.sky.s*(.5+day*.5),THREE.MathUtils.lerp(.06,.5,day));
     const horizon=hslHex(biome.sky.h+(dawn>.3?.06:0),biome.sky.s*(.4+dawn*.5),THREE.MathUtils.lerp(.08,.78,Math.max(day,dawn*.8)));
     const sun=hslHex(.11-dawn*.03,.55+dawn*.3,THREE.MathUtils.lerp(.55,.97,day));
@@ -646,7 +651,8 @@ const oceanU={
   uDeep:{value:new THREE.Color(PAL.oceanDeep)},
   uShallow:{value:new THREE.Color(PAL.oceanShallow)},
   uChakra:{value:new THREE.Color(0x224466)},
-  uSandWet:{value:new THREE.Color(PAL.sandWet)}
+  uSandWet:{value:new THREE.Color(PAL.sandWet)},
+  uColorSwapOn:{value:1} // 0 for fully-submerged biomes: the shoreline swap reads as mud on open water
 };
 const ocean=new THREE.Mesh(new THREE.PlaneGeometry(300,400,oSegX,oSegY),new THREE.ShaderMaterial({
   uniforms:oceanU,transparent:true,depthWrite:true,
@@ -734,7 +740,7 @@ const ocean=new THREE.Mesh(new THREE.PlaneGeometry(300,400,oSegX,oSegY),new THRE
 
       gl_Position=projectionMatrix*modelViewMatrix*vec4(x,y,h,1.0);
     }`,
-  fragmentShader:`uniform vec3 uDeep;uniform vec3 uShallow;uniform vec3 uChakra;uniform vec3 uSandWet;
+  fragmentShader:`uniform vec3 uDeep;uniform vec3 uShallow;uniform vec3 uChakra;uniform vec3 uSandWet;uniform float uColorSwapOn;
     varying vec2 vXY;varying float vH;varying float vFoam;varying float vDepth;
     void main(){
       float s=clamp(vH*1.6+0.5,0.0,1.0);
@@ -757,7 +763,7 @@ const ocean=new THREE.Mesh(new THREE.PlaneGeometry(300,400,oSegX,oSegY),new THRE
       // alpha fade: real shallows read the sandy bottom through the water
       // well before the shoreline, so the hand-off is a visible gradient
       // across many pixels rather than a last-instant snap at the seam.
-      float colorSwapT=1.0-smoothstep(-200.0,-120.0,vXY.y);
+      float colorSwapT=(1.0-smoothstep(-200.0,-120.0,vXY.y))*uColorSwapOn;
       col=mix(col,uSandWet,colorSwapT*0.6);
       gl_FragColor=vec4(col,0.95*edgeFade);
     }`
@@ -1221,6 +1227,20 @@ function applyTheme(biome){
   updateTimeOfDay();
   ocean.visible=!!biome.water;
   sandU.uWetOn.value=biome.wetGround?1:0;
+  // Fully-submerged biomes (open depth, not a shoreline) skip the
+  // shoreline colour-swap entirely — that blend was tuned for Coastal
+  // Shore's gentle tideline and otherwise just reads as mud on open water
+  // — pull the water a little closer to shrink the visible "dry beach"
+  // gap, and thicken the fog into real depth-murk instead of atmospheric haze.
+  oceanU.uColorSwapOn.value=biome.submerged?0:1;
+  ocean.position.z=biome.submerged?-197:-202;
+  scene.fog.density=biome.submerged?0.022:0.0062;
+  // ACES filmic tone mapping lifts shadows/midtones by design (that's what
+  // gives it its cinematic look) — it was fighting every other darkening
+  // knob above. Exposure is the one lever that actually darkens the whole
+  // rendered frame rather than getting lifted back up by the tonemap curve.
+  renderer.toneMappingExposure=biome.submerged?0.42:1.08;
+  if(biome.water)oceanU.uChakra.value.setHex(hslHex(biome.water.h,0.4,0.3));
   buildDecor(biome);
   buildAmbientParticles(biome);
   document.getElementById('hTitle').textContent=biome.name.toUpperCase();
@@ -1728,12 +1748,22 @@ let lastT=performance.now();
 function updateSun(now,el){
   updateTimeOfDay();
   skyU.uSunDir.value.set(.18,PAL.sh,-1).normalize();
-  // Fade the sun disc/glow out below the horizon instead of popping.
-  const sunVisibility=THREE.MathUtils.clamp(PAL.sh*6+.3,0,1);
+  // Fade the sun disc/glow out below the horizon instead of popping. Real
+  // sunlight doesn't reach a submerged biome's depth, so those get a fixed,
+  // steep dimming on top of the normal day/night curve — not just dimmer
+  // colours, the sun itself barely shows and never brightens past a dim glow.
+  const depthDim=currentBiome.submerged?0.15:1.0;
+  const sunVisibility=THREE.MathUtils.clamp(PAL.sh*6+.3,0,1)*depthDim;
   skyU.uSunColor.value.copy(PAL.sun).multiplyScalar(.4+sunVisibility*.6);
   sunLight.position.copy(skyU.uSunDir.value).multiplyScalar(100);
   sunLight.color.copy(PAL.sun);
-  sunLight.intensity=.3+sunVisibility*.95;
+  sunLight.intensity=(.3+sunVisibility*.95)*(currentBiome.submerged?0.5:1);
+  // Ambient/hemisphere fill light is otherwise constant regardless of biome —
+  // without dimming it too, a dark submerged albedo still reads surprisingly
+  // bright under full ambient fill, undercutting the depth-dimming above.
+  const ambMul=currentBiome.submerged?0.45:1;
+  ambL.intensity=.55*ambMul;
+  hemiL.intensity=.6*ambMul;
   sunDisc.position.copy(skyU.uSunDir.value).multiplyScalar(260);
   sunDisc.lookAt(cam.position);
   sunDisc.material.opacity=.95*sunVisibility;
@@ -1741,6 +1771,11 @@ function updateSun(now,el){
   sunHalo.lookAt(cam.position);
   sunHalo.material.opacity=.22*sunVisibility;
   cloudMat.color.copy(PAL.sun).lerp(_todB.set(0xffffff),.55);
+  // Fog reads as the biome's own murk/haze — deep water's own deep colour
+  // when submerged (so depth feels like it surrounds you), the sky's
+  // horizon tone otherwise (already day/night and chakra reactive).
+  _todA.copy(currentBiome.submerged?PAL.oceanDeep:PAL.horizon).lerp(PAL.zenith,.25);
+  scene.fog.color.copy(_todA);
   skyU.uTime.value=el;
   oceanU.uTime.value=el;
   sandU.uTime.value=el;
@@ -1766,13 +1801,19 @@ function updateEnvironmentColors(chHue,chComp,ci){
   oceanU.uDeep.value.lerp(_tmp,.015);
   _tmp.copy(new THREE.Color(PAL.oceanShallow)).lerp(chHue,ci*.45);
   oceanU.uShallow.value.lerp(_tmp,.015);
-  oceanU.uChakra.value.lerp(chHue,.02);
+  // Both of these used to drift toward the active chakra's hue unconditionally,
+  // every frame, regardless of chakraInfluence — so the ocean/fire-glow tint
+  // would quietly creep toward red (Root, the default activeCK) just from
+  // sitting on the prelude screen, well before any fire was lit. Scaling the
+  // lerp rate by ci fixes that: zero drift pre-ignite, same convergence as
+  // before once the chakra journey is actually underway.
+  oceanU.uChakra.value.lerp(chHue,.02*ci);
   _tmp.copy(new THREE.Color(PAL.sandBase)).lerp(chHue,ci*.3);
   sandU.uBase.value.lerp(_tmp,.015);
   _tmp.copy(new THREE.Color(PAL.sandWet)).lerp(chComp,ci*.35);
   sandU.uWet.value.lerp(_tmp,.015);
   oceanU.uSandWet.value.lerp(_tmp,.015);
-  sandU.uGlow.value.lerp(chHue,.04);
+  sandU.uGlow.value.lerp(chHue,.04*ci);
 }
 
 function updateFire(chHue,el,dt){
