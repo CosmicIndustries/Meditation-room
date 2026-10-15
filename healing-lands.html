@@ -441,45 +441,45 @@ const BIOMES=[
    sky:{h:0.68,s:0.15}, ground:{h:0.05,s:0.3,l:0.15}, water:{h:0.6,s:0.25},
    wetGround:false, decor:['pillar','rock','crystal'], tint:0x6a3a2a, density:0.9,
    particle:{type:'bubbles',color:0xffb070,count:110,speed:0.5,spread:40}, windBrightness:0.15},
-  {id:'sky-islands', name:'Sky Islands', cat:'air',
+  {id:'sky-islands', name:'Sky Islands', cat:'air', groundless:true,
    sky:{h:0.58,s:0.5}, ground:{h:0.3,s:0.35,l:0.42}, water:null,
    wetGround:false, decor:['rock','log','ring'], tint:0x5a8a4a, density:0.8,
    particle:{type:'dust',color:0xdfe8ff,count:90,speed:0.3,spread:60}, windBrightness:0.9},
-  {id:'cloud-sea', name:'Cloud Sea', cat:'air',
+  {id:'cloud-sea', name:'Cloud Sea', cat:'air', groundless:true,
    sky:{h:0.56,s:0.35}, ground:{h:0.58,s:0.05,l:0.88}, water:null,
    wetGround:false, decor:['ring','pillar'], tint:0xffffff, density:0.5,
    particle:{type:'dust',color:0xffffff,count:100,speed:0.25,spread:60}, windBrightness:0.8},
-  {id:'aurora-veil', name:'Aurora Veil', cat:'air',
+  {id:'aurora-veil', name:'Aurora Veil', cat:'air', groundless:true,
    sky:{h:0.75,s:0.4}, ground:{h:0.55,s:0.15,l:0.2}, water:null,
    wetGround:false, decor:['crystal','spike','rock'], tint:0x4ae8a0, density:0.6,
    particle:{type:'stardust',color:0x8affc2,count:130,speed:0.3,spread:55}, windBrightness:0.85},
-  {id:'nebula-drift', name:'Nebula Drift', cat:'air',
+  {id:'nebula-drift', name:'Nebula Drift', cat:'air', groundless:true,
    sky:{h:0.78,s:0.45}, ground:{h:0.8,s:0.2,l:0.12}, water:null,
    wetGround:false, decor:['crystal','ring','pillar'], tint:0xa05aff, density:0.5,
    particle:{type:'stardust',color:0xd0a0ff,count:170,speed:0.25,spread:70}, windBrightness:0.6},
-  {id:'astral-plane', name:'Astral Plane', cat:'air',
+  {id:'astral-plane', name:'Astral Plane', cat:'air', groundless:true,
    sky:{h:0.68,s:0.3}, ground:{h:0.65,s:0.1,l:0.3}, water:null,
    wetGround:false, decor:['ring','crystal','pillar'], tint:0x7ac2ff, density:0.6,
    particle:{type:'stardust',color:0xbfe0ff,count:140,speed:0.2,spread:65}, windBrightness:0.5},
-  {id:'lucid-dreamscape', name:'Lucid Dreamscape', cat:'air',
+  {id:'lucid-dreamscape', name:'Lucid Dreamscape', cat:'air', groundless:true,
    sky:{h:0.85,s:0.4}, ground:{h:0.9,s:0.25,l:0.5}, water:null,
    wetGround:false, decor:['ring','crystal','spike'], tint:0xe88ad0, density:0.7,
    particle:{type:'pollen',color:0xffc2e8,count:110,speed:0.25,spread:55}, windBrightness:0.5},
-  {id:'storm-eye', name:'Eye of the Storm', cat:'air',
+  {id:'storm-eye', name:'Eye of the Storm', cat:'air', groundless:true,
    sky:{h:0.6,s:0.3}, ground:{h:0.58,s:0.1,l:0.5}, water:null,
    wetGround:false, decor:['ring','pillar'], tint:0x8a98a8, density:0.5,
    // The eye of a storm is famously the calm, still center the walls of
    // weather circle around — low windBrightness on purpose, not high.
    particle:{type:'rain',color:0xaad0e8,count:70,speed:0.5,spread:60}, windBrightness:0.35},
-  {id:'celestial-temple', name:'Celestial Temple', cat:'air',
+  {id:'celestial-temple', name:'Celestial Temple', cat:'air', groundless:true,
    sky:{h:0.62,s:0.3}, ground:{h:0.14,s:0.1,l:0.75}, water:null,
    wetGround:false, decor:['pillar','ring'], tint:0xf0e2b0, density:0.6,
    particle:{type:'stardust',color:0xfff0c0,count:100,speed:0.2,spread:50}, windBrightness:0.7},
-  {id:'starlight-steppe', name:'Starlight Steppe', cat:'air',
+  {id:'starlight-steppe', name:'Starlight Steppe', cat:'air', groundless:true,
    sky:{h:0.7,s:0.35}, ground:{h:0.6,s:0.08,l:0.3}, water:null,
    wetGround:false, decor:['spike','rock','crystal'], tint:0x6a7ac2, density:0.5,
    particle:{type:'stardust',color:0xc2d0ff,count:120,speed:0.2,spread:60}, windBrightness:0.9},
-  {id:'wind-spire-peaks', name:'Wind Spire Peaks', cat:'air',
+  {id:'wind-spire-peaks', name:'Wind Spire Peaks', cat:'air', groundless:true,
    sky:{h:0.57,s:0.45}, ground:{h:0.5,s:0.1,l:0.55}, water:null,
    wetGround:false, decor:['spike','pillar','ring'], tint:0x9ab0c2, density:0.6,
    particle:{type:'dust',color:0xe8f0ff,count:100,speed:0.5,spread:65}, windBrightness:1.0},
@@ -491,11 +491,11 @@ const BIOMES=[
    sky:{h:0.4,s:0.3}, ground:{h:0.3,s:0.4,l:0.3}, water:{h:0.52,s:0.4},
    wetGround:true, decor:['spike','crystal','rock','bush'], tint:0x7ac26a, density:1.6,
    particle:{type:'pollen',color:0xcfe88a,count:130,speed:0.2,spread:30}, windBrightness:0.45},
-  {id:'quantum-foam', name:'Quantum Foam', cat:'misc',
+  {id:'quantum-foam', name:'Quantum Foam', cat:'misc', groundless:true,
    sky:{h:0.78,s:0.2}, ground:{h:0.75,s:0.15,l:0.15}, water:null,
    wetGround:false, decor:['crystal','ring','spike'], tint:0x9affe8, density:0.9,
    particle:{type:'bioluminescence',color:0x9affe8,count:180,speed:0.3,spread:35}, windBrightness:0.3},
-  {id:'high-stratosphere', name:'High Stratosphere', cat:'misc',
+  {id:'high-stratosphere', name:'High Stratosphere', cat:'misc', groundless:true,
    sky:{h:0.62,s:0.55}, ground:{h:0.6,s:0.1,l:0.6}, water:null,
    wetGround:false, decor:['ring','pillar'], tint:0xcfe0ff, density:0.4,
    particle:{type:'stardust',color:0xffffff,count:90,speed:0.2,spread:70}, windBrightness:1.0},
@@ -608,12 +608,13 @@ const skyU={
   uSunColor:{value:new THREE.Color(PAL.sun)},
   uSunDir:{value:new THREE.Vector3(.18,PAL.sh,-1).normalize()},
   uTime:{value:0},
-  uGrain:{value:skyGrain}
+  uGrain:{value:skyGrain},
+  uVoidBelow:{value:0}
 };
 const sky=new THREE.Mesh(new THREE.SphereGeometry(460,32,20),new THREE.ShaderMaterial({
   uniforms:skyU,side:THREE.BackSide,depthWrite:false,
   vertexShader:`varying vec3 vDir;void main(){vDir=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-  fragmentShader:`uniform vec3 uZenith;uniform vec3 uHorizon;uniform vec3 uSunColor;uniform vec3 uSunDir;uniform float uTime;
+  fragmentShader:`uniform vec3 uZenith;uniform vec3 uHorizon;uniform vec3 uSunColor;uniform vec3 uSunDir;uniform float uTime;uniform float uVoidBelow;
     uniform sampler2D uGrain;
     varying vec3 vDir;
     void main(){
@@ -624,6 +625,18 @@ const sky=new THREE.Mesh(new THREE.SphereGeometry(460,32,20),new THREE.ShaderMat
       col+=uSunColor*glow;
       float cloud=texture2D(uGrain,vec2(vDir.x*0.5+uTime*0.002,vDir.z*0.5)).r*smoothstep(.0,.3,vDir.y)*smoothstep(.46,.08,vDir.y);
       col=mix(col,col*.8+uHorizon*.55,cloud*.32);
+      // Floating-island biomes hide their ground plane entirely, so below
+      // the horizon is otherwise just this same flat uHorizon fill — from
+      // eye level that reads exactly like solid ground continuing to the
+      // horizon, defeating the point. A drifting, textured haze standing
+      // in for a distant cloud layer instead makes looking down (and past
+      // the platform's edge) read as open air, not more "beach".
+      if(uVoidBelow>0.5){
+        float depthBelow=clamp(-vDir.y*2.2,0.,1.);
+        float mistTex=texture2D(uGrain,vec2(vDir.x*0.35-uTime*0.004,vDir.z*0.35+uTime*0.003)).r;
+        vec3 mistCol=mix(uHorizon,vec3(0.92,0.94,0.97),0.55)+(mistTex-0.5)*0.12;
+        col=mix(col,mistCol,depthBelow);
+      }
       gl_FragColor=vec4(col,1.);
     }`
 }));
@@ -952,6 +965,48 @@ farGround.rotation.x=-Math.PI/2;
 farGround.position.set(0,-0.08,-205);
 scene.add(farGround);
 
+// A sky/fantasy biome (biome.groundless) swaps the dry-land ground out for
+// this instead: a small disc to stand on, with a tapered underside so it
+// reads as a chunk of floating rock rather than a sheet hanging in space —
+// beyond its edge there's just open sky, not a beach with props scattered
+// on it. Sized to clear decor's own tighter 3–8 unit scatter radius for
+// groundless biomes (see buildDecor() below) with a bit of margin.
+//
+// A flat disc alone turned out not to be enough: from a standing camera a
+// little way above it, a plane this size STILL visually recedes almost to
+// the horizon before its true edge becomes noticeable (the same perspective
+// quirk behind the dry-land far-ground seam elsewhere in this file) — the
+// edge was only ever a thin sliver right at the skyline, not the clearly
+// "small island" read this is after. So the top is domed and droops toward
+// its rim (radialDroop below) rather than staying flat: the ground visibly
+// curves away underfoot into the void-tinted sky past a fairly short
+// distance, which reads as standing on a small floating shape even though
+// the geometry itself is still the same size.
+const platformMat=sandMat.clone();
+platformMat.customProgramCacheKey=()=>'floatPlatform';
+platformMat.onBeforeCompile=(shader)=>{
+  sandMat.onBeforeCompile(shader);
+  shader.uniforms.uWetOn={value:0};
+  // Redefining groundHeight itself (rather than adding the droop at each
+  // call site separately) keeps it inside the same finite-difference bump
+  // the normal is already computed from, so the drooping rim also catches
+  // light correctly instead of staying shaded as if it were still flat.
+  shader.vertexShader=shader.vertexShader.replace(
+    'float groundHeight(vec2 p){return noise(p*0.15)*0.1;}',
+    'float groundHeight(vec2 p){return noise(p*0.15)*0.1-pow(clamp(length(p)/11.0,0.,1.),2.2)*2.6;}');
+};
+const floatPlatform=new THREE.Group();
+const platformTop=new THREE.Mesh(new THREE.CircleGeometry(11,40),platformMat);
+platformTop.rotation.x=-Math.PI/2;
+platformTop.receiveShadow=true;
+floatPlatform.add(platformTop);
+const platformUndersideMat=new THREE.MeshStandardMaterial({color:0x332e26,map:decorSplat,roughness:.95});
+const platformUnderside=new THREE.Mesh(new THREE.CylinderGeometry(9,0.8,7,14,1,true),platformUndersideMat);
+platformUnderside.position.y=-5.5;
+floatPlatform.add(platformUnderside);
+floatPlatform.visible=false;
+scene.add(floatPlatform);
+
 // ── DECOR: theme-driven prop scattering ──────────────────────────────────────
 // Eight low-poly archetypes built from primitive geometry only (no external
 // assets), reused across biomes — 'rock'/'crystal' read as boulders, gems,
@@ -1082,8 +1137,13 @@ function buildDecor(biome){
     const mul=type==='quadruped'?Q.faunaMul:Q.decorMul;
     const n=Math.max(1,Math.round((DECOR_BASE_COUNT[type]||8)*biome.density*mul));
     const tall=type==='pillar'||type==='spike'||type==='ring'||type==='quadruped';
+    // Floating-island biomes keep decor on a tighter ring: the platform
+    // under them is sized to this spread (see floatPlatform above), and a
+    // small island hugged closely by its own props reads better than a
+    // sprawling one anyway.
+    const rSpread=biome.groundless?5:10;
     for(let i=0;i<n;i++){
-      const a=rng()*Math.PI*2,r=3+rng()*10;
+      const a=rng()*Math.PI*2,r=3+rng()*rSpread;
       const x=Math.sin(a)*r,z=4+Math.cos(a)*r*0.7-2;
       if(Math.abs(x)<1.4&&z<2&&z>-1)continue; // keep fire pit clear
       const m=makeDecorMesh(type,decorMat,rng);
@@ -1350,7 +1410,10 @@ function applyTheme(biome){
   sandU.uBase.value.copy(PAL.sandBase);
   sandU.uWet.value.copy(PAL.sandWet);
   ocean.visible=!!biome.water;
-  farGround.visible=!biome.water; // the ocean plane already extends to the horizon when there's water
+  farGround.visible=!biome.water&&!biome.groundless; // the ocean plane already extends to the horizon when there's water
+  sand.visible=!biome.groundless;
+  floatPlatform.visible=!!biome.groundless;
+  skyU.uVoidBelow.value=biome.groundless?1:0;
   sandU.uWetOn.value=biome.wetGround?1:0;
   sandU.uShoreOn.value=biome.water?1:0;
   // Fully-submerged biomes (open depth, not a shoreline) skip the
