@@ -596,29 +596,33 @@ updateTimeOfDay();
 
 // ── SKY DOME ─────────────────────────────────────────────────────────────────
 
+// A third shared black-and-white texture, same technique and same memory
+// principle as the ground/decor ones below: one grayscale SVG asset, reused
+// by the sky dome's own tint (uZenith/uHorizon) instead of a colour-baked
+// sky texture. Lower baseFrequency than the ground/decor grain gives
+// broader, cloud-like shapes rather than fine surface detail.
+const skyGrain=makeSplatTexture([128,192,256][qTier],'sky-grain',0.6);
 const skyU={
   uZenith:{value:new THREE.Color(PAL.zenith)},
   uHorizon:{value:new THREE.Color(PAL.horizon)},
   uSunColor:{value:new THREE.Color(PAL.sun)},
   uSunDir:{value:new THREE.Vector3(.18,PAL.sh,-1).normalize()},
-  uTime:{value:0}
+  uTime:{value:0},
+  uGrain:{value:skyGrain}
 };
 const sky=new THREE.Mesh(new THREE.SphereGeometry(460,32,20),new THREE.ShaderMaterial({
   uniforms:skyU,side:THREE.BackSide,depthWrite:false,
   vertexShader:`varying vec3 vDir;void main(){vDir=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
   fragmentShader:`uniform vec3 uZenith;uniform vec3 uHorizon;uniform vec3 uSunColor;uniform vec3 uSunDir;uniform float uTime;
+    uniform sampler2D uGrain;
     varying vec3 vDir;
-    float hash(vec2 p){return fract(sin(dot(p,vec2(41.3,289.1)))*43758.5453);}
-    float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
-      float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));
-      return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
     void main(){
       float h=clamp(vDir.y*1.4+.06,0.,1.);
       vec3 col=mix(uHorizon,uZenith,pow(h,.55));
       float sunDot=max(dot(normalize(vDir),normalize(uSunDir)),0.);
       float glow=pow(sunDot,22.)*.32+pow(sunDot,420.)*1.1;
       col+=uSunColor*glow;
-      float cloud=noise(vec2(vDir.x*2.6+uTime*.008,vDir.z*2.6))*smoothstep(.0,.3,vDir.y)*smoothstep(.46,.08,vDir.y);
+      float cloud=texture2D(uGrain,vec2(vDir.x*0.5+uTime*0.002,vDir.z*0.5)).r*smoothstep(.0,.3,vDir.y)*smoothstep(.46,.08,vDir.y);
       col=mix(col,col*.8+uHorizon*.55,cloud*.32);
       gl_FragColor=vec4(col,1.);
     }`
@@ -909,20 +913,60 @@ scene.add(sand);
 // handful of biomes at a count of one or two: ambient life going about its
 // own business in the background, not a petting zoo.
 const DECOR_BASE_COUNT={rock:14,log:4,crystal:11,spike:10,pillar:6,ring:4,bush:7,quadruped:1};
+// One shared UNIT geometry per archetype (radius/height always 1, any
+// taper ratio baked in), built once and reused by every instance across
+// every biome — per-instance size comes entirely from Object3D.scale
+// instead of a uniquely-constructed BufferGeometry per prop. 42 biomes'
+// worth of decor now costs a fixed, small set of geometries, not hundreds
+// of one-off copies rebuilt on every biome switch.
+const DECOR_GEO={
+  rock:new THREE.IcosahedronGeometry(1,0),
+  log:new THREE.CylinderGeometry(1,1.286,1,7),   // top/bottom ratio from the original .14/.18
+  crystal:new THREE.OctahedronGeometry(1,0),
+  spike:new THREE.ConeGeometry(1,1,6),
+  pillar:new THREE.CylinderGeometry(1,1.375,1,8), // ratio from the original .16/.22
+  ring:new THREE.TorusGeometry(1,.25,8,16),       // tube ratio from the original .08/.32
+  quadBody:new THREE.CylinderGeometry(1,.92,1,6),
+  quadLeg:new THREE.CylinderGeometry(1,.8,1,5),
+  quadHead:new THREE.BoxGeometry(1,1,1),
+  quadTail:new THREE.ConeGeometry(1,1,5),
+};
 function makeDecorMesh(type,mat,rng){
   switch(type){
-    case 'log': return new THREE.Mesh(new THREE.CylinderGeometry(.14,.18,2.2+rng()*1.0,7),mat);
-    case 'crystal': return new THREE.Mesh(new THREE.OctahedronGeometry(.28+rng()*.26,0),mat);
-    case 'spike': return new THREE.Mesh(new THREE.ConeGeometry(.2+rng()*.2,1.0+rng()*1.4,6),mat);
-    case 'pillar': return new THREE.Mesh(new THREE.CylinderGeometry(.16,.22,1.8+rng()*1.8,8),mat);
-    case 'ring': return new THREE.Mesh(new THREE.TorusGeometry(.32+rng()*.22,.08,8,16),mat);
+    case 'log':{
+      const m=new THREE.Mesh(DECOR_GEO.log,mat);
+      m.scale.set(.14,2.2+rng()*1.0,.14);
+      return m;
+    }
+    case 'crystal':{
+      const m=new THREE.Mesh(DECOR_GEO.crystal,mat);
+      m.scale.setScalar(.28+rng()*.26);
+      return m;
+    }
+    case 'spike':{
+      const radius=.2+rng()*.2;
+      const m=new THREE.Mesh(DECOR_GEO.spike,mat);
+      m.scale.set(radius,1.0+rng()*1.4,radius);
+      return m;
+    }
+    case 'pillar':{
+      const m=new THREE.Mesh(DECOR_GEO.pillar,mat);
+      m.scale.set(.16,1.8+rng()*1.8,.16);
+      return m;
+    }
+    case 'ring':{
+      const m=new THREE.Mesh(DECOR_GEO.ring,mat);
+      m.scale.setScalar(.32+rng()*.22);
+      return m;
+    }
     case 'bush':{
       const g=new THREE.Group();
       const n=2+Math.floor(rng()*2);
       for(let i=0;i<n;i++){
-        const m=new THREE.Mesh(new THREE.IcosahedronGeometry(.2+rng()*.14,0),mat);
+        const m=new THREE.Mesh(DECOR_GEO.rock,mat);
+        const s=.2+rng()*.14;
         m.position.set((rng()-.5)*.32,.09+rng()*.07,(rng()-.5)*.32);
-        m.scale.y=.55;
+        m.scale.set(s,s*.55,s);
         g.add(m);
       }
       return g;
@@ -936,34 +980,45 @@ function makeDecorMesh(type,mat,rng){
       const g=new THREE.Group();
       const scale=.75+rng()*.5;
       const bodyLen=.55*scale,bodyR=.12*scale,legH=.3*scale,legR=.04*scale,halfW=.09*scale;
-      const body=new THREE.Mesh(new THREE.CylinderGeometry(bodyR,bodyR*.92,bodyLen,6),mat);
+      const body=new THREE.Mesh(DECOR_GEO.quadBody,mat);
+      body.scale.set(bodyR,bodyLen,bodyR);
       body.rotation.z=Math.PI/2;body.position.y=legH;
       g.add(body);
       [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([lx,lz])=>{
-        const leg=new THREE.Mesh(new THREE.CylinderGeometry(legR,legR*.8,legH,5),mat);
+        const leg=new THREE.Mesh(DECOR_GEO.quadLeg,mat);
+        leg.scale.set(legR,legH,legR);
         leg.position.set(lx*bodyLen*.32,legH/2,lz*halfW);
         g.add(leg);
       });
-      const head=new THREE.Mesh(new THREE.BoxGeometry(.15*scale,.13*scale,.2*scale),mat);
+      const head=new THREE.Mesh(DECOR_GEO.quadHead,mat);
+      head.scale.set(.15*scale,.13*scale,.2*scale);
       head.position.set(bodyLen*.55,legH+.08*scale,0);
       g.add(head);
-      const tail=new THREE.Mesh(new THREE.ConeGeometry(.035*scale,.24*scale,5),mat);
+      const tail=new THREE.Mesh(DECOR_GEO.quadTail,mat);
+      tail.scale.set(.035*scale,.24*scale,.035*scale);
       tail.rotation.z=Math.PI/2+.35;
       tail.position.set(-bodyLen*.6,legH+.05*scale,0);
       g.add(tail);
       g.userData.sway=rng()*Math.PI*2;
       return g;
     }
-    default: return new THREE.Mesh(new THREE.IcosahedronGeometry(.18+rng()*.3,0),mat);
+    default:{
+      const m=new THREE.Mesh(DECOR_GEO.rock,mat);
+      m.scale.setScalar(.18+rng()*.3);
+      return m;
+    }
   }
 }
 const decorGroup=new THREE.Group();scene.add(decorGroup);
 const faunaGroups=[];
 let decorMat=null;
 function buildDecor(biome){
+  // Geometry is shared (DECOR_GEO, built once above) across every instance
+  // and every biome now, so clearing old decor only removes the meshes —
+  // it must NOT dispose their geometry, which other/future instances still
+  // reference. Only decorMat (below) is actually unique per biome.
   while(decorGroup.children.length){
-    const m=decorGroup.children.pop();
-    decorGroup.remove(m);m.traverse(c=>{if(c.isMesh)c.geometry.dispose();});
+    decorGroup.remove(decorGroup.children[0]);
   }
   faunaGroups.length=0;
   if(decorMat)decorMat.dispose();
@@ -1075,14 +1130,17 @@ function spawnSmk(i){
 const CLOUD_N=Math.max(2,Math.round(10*Q.cloudMul));
 const cloudGroups=[];
 const cloudMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.82,fog:true});
+// One shared unit puff geometry, scaled per-instance (including the
+// y-flatten) instead of a uniquely-sized geometry per puff.
+const cloudPuffGeo=new THREE.IcosahedronGeometry(1,0);
 for(let i=0;i<CLOUD_N;i++){
   const grp=new THREE.Group();
   const puffs=2+Math.floor(worldRng()*3);
   for(let j=0;j<puffs;j++){
     const r=2.4+worldRng()*2.6;
-    const m=new THREE.Mesh(new THREE.IcosahedronGeometry(r,0),cloudMat);
+    const m=new THREE.Mesh(cloudPuffGeo,cloudMat);
     m.position.set((worldRng()-.5)*6.5,(worldRng()-.5)*1.4,(worldRng()-.5)*3.2);
-    m.scale.y=.5+worldRng()*.22;
+    m.scale.set(r,r*(.5+worldRng()*.22),r);
     grp.add(m);
   }
   const a=worldRng()*Math.PI*2,r=90+worldRng()*180;
@@ -1109,15 +1167,18 @@ function updateClouds(dt){
 
 // ── GULLS — simple low-poly birds on loose circling flight paths ────────────
 const gullMat=new THREE.MeshBasicMaterial({color:0x2a251f});
+// Every gull is identically sized (no randomization), so body/wing geometry
+// is built once and shared by every instance below instead of once per gull.
+const gullBodyGeo=new THREE.ConeGeometry(.08,.5,5);
+const gullWingGeo=new THREE.BoxGeometry(.55,.02,.16);
 function makeGull(){
   const grp=new THREE.Group();
-  const body=new THREE.Mesh(new THREE.ConeGeometry(.08,.5,5),gullMat);
+  const body=new THREE.Mesh(gullBodyGeo,gullMat);
   body.rotation.x=Math.PI/2;grp.add(body);
-  const wingGeo=new THREE.BoxGeometry(.55,.02,.16);
   const pivotL=new THREE.Group();grp.add(pivotL);
-  const wL=new THREE.Mesh(wingGeo,gullMat);wL.position.x=-.3;pivotL.add(wL);
+  const wL=new THREE.Mesh(gullWingGeo,gullMat);wL.position.x=-.3;pivotL.add(wL);
   const pivotR=new THREE.Group();grp.add(pivotR);
-  const wR=new THREE.Mesh(wingGeo,gullMat);wR.position.x=.3;pivotR.add(wR);
+  const wR=new THREE.Mesh(gullWingGeo,gullMat);wR.position.x=.3;pivotR.add(wR);
   grp.userData={pivotL,pivotR};
   return grp;
 }
