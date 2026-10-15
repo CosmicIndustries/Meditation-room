@@ -786,7 +786,8 @@ const sandU={
   uGlow:{value:new THREE.Color(0xff9944)},
   uFireI:{value:0},
   uTime:{value:0},
-  uWetOn:{value:1}
+  uWetOn:{value:1},
+  uShoreOn:{value:1}
 };
 // A genuine SVG-generated "splat" texture — feTurbulence is SVG's own
 // procedural noise primitive, rendered here at a high resolution (scaled
@@ -863,7 +864,7 @@ sandMat.onBeforeCompile=(shader)=>{
       vXY=position.xy;
       transformed.z=groundHeight(position.xy);`);
   shader.fragmentShader=noiseLib+`
-    uniform vec3 uBase;uniform vec3 uWet;uniform vec3 uGlow;uniform float uFireI;uniform float uTime;uniform float uWetOn;
+    uniform vec3 uBase;uniform vec3 uWet;uniform vec3 uGlow;uniform float uFireI;uniform float uTime;uniform float uWetOn;uniform float uShoreOn;
     uniform sampler2D uGrain;
   `+shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
     {
@@ -877,15 +878,20 @@ sandMat.onBeforeCompile=(shader)=>{
       // slows the swell offshore (see the ocean shader), just finishing
       // the job on the beach. vXY.y=10 is the shoreline edge, vXY.y=-10
       // is dry sand toward the fire; reachY is how far up the current
-      // wave has pushed, right now.
+      // wave has pushed, right now. uShoreOn keeps this travelling wave
+      // (and its foam line) to biomes with an actual body of water —
+      // "damp ground" biomes with no shoreline (a rainforest floor, a
+      // cave floor) still get wetT's static dampness below, but without
+      // this a visible band of "water" swept across them on a timer,
+      // which is exactly the "ocean on dry land" look this is fixing.
       float cycleT=uTime/5.5;
       float seed=hash(vec2(floor(cycleT),1.7));
       float cyclePhase=fract(cycleT);
       float push=cyclePhase<0.3?smoothstep(0.0,0.3,cyclePhase):1.0-smoothstep(0.3,1.0,cyclePhase);
       push=pow(push,0.6);
       float reachY=10.0-push*9.5+(seed-0.5)*3.0*push;
-      float swashWet=smoothstep(reachY-2.0,reachY+1.2,vXY.y);
-      float edgeBand=1.0-smoothstep(0.0,2.6,abs(vXY.y-reachY));
+      float swashWet=smoothstep(reachY-2.0,reachY+1.2,vXY.y)*uShoreOn;
+      float edgeBand=(1.0-smoothstep(0.0,2.6,abs(vXY.y-reachY)))*uShoreOn;
 
       float wetness=max(wetT*0.55,swashWet*0.95)*uWetOn;
       col=mix(col,uWet*0.8,wetness);
@@ -902,6 +908,49 @@ sand.rotation.x=-Math.PI/2;
 sand.position.set(0,0,4);
 sand.receiveShadow=true;
 scene.add(sand);
+
+// The detailed sand plane above is only 20 units deep — built that size for
+// its grain/swash shader's own local-coordinate math, not as a horizon.
+// Past its far edge the ground used to just stop, handing off directly to
+// the sky dome's own horizon-coloured gradient a few units later: a hard
+// seam that, at a glance, reads as a distant shoreline even on dry land.
+// A second plane closes that gap — but two *different* materials, even
+// colour-matched and fogged identically, still handed off with a visible
+// seam: sand's bump-perturbed normal (below) makes it catch light in a
+// lively, varied way a flat Lambert/Standard normal never does, so the
+// far ground always read as a flatter, duller band next to it regardless
+// of which lit material or how much Fresnel it had. Reusing sandMat
+// itself sidesteps the mismatch entirely — same shader, same lighting
+// response, so the far ground is just more of the same ground rather
+// than a different-looking thing bolted on at the edge.
+// A clone, not the same instance: it needs its own uWetOn pinned to always-
+// dry. sandMat's wetness/swash math is written in sand's own local
+// coordinates (a ±10-unit shoreline), and farGround's local Y runs to
+// ±215 — reusing sand's live wetness there would read the far ground as
+// wet starting right at the seam (vXY.y saturates past 10) while sand's
+// own far edge is dry, trading one mismatched band for another on every
+// wet-ground biome. Everything else (base colour, grain, bump lighting,
+// fire glow) still tracks sand's uniforms live, by reference.
+const farGroundMat=sandMat.clone();
+// Without this, Three reuses sandMat's already-compiled program for this
+// clone (nothing about a MeshStandardMaterial's cache key reflects which
+// onBeforeCompile function it has), so the uWetOn override below would be
+// silently ignored and farGround would render with sand's live, biome-
+// driven wetness after all — forcing a distinct cache key is what actually
+// makes it compile (and keep) its own copy of the uniforms.
+farGroundMat.customProgramCacheKey=()=>'farGround';
+farGroundMat.onBeforeCompile=(shader)=>{
+  sandMat.onBeforeCompile(shader);
+  shader.uniforms.uWetOn={value:0};
+};
+// Depth/position chosen to overlap the near sand plane's far edge (z=-6)
+// by several units rather than merely touch it — the two used to leave a
+// sliver gap between them (a seam the raw, unfogged sky dome showed through
+// as a flat pale band, read as a strip of distant water even on dry land).
+const farGround=new THREE.Mesh(new THREE.PlaneGeometry(500,430,24,20),farGroundMat);
+farGround.rotation.x=-Math.PI/2;
+farGround.position.set(0,-0.08,-205);
+scene.add(farGround);
 
 // ── DECOR: theme-driven prop scattering ──────────────────────────────────────
 // Eight low-poly archetypes built from primitive geometry only (no external
@@ -1286,8 +1335,24 @@ function applyTheme(biome){
   currentBiome=biome;
   TOD_KEYS=buildTOD(biome);
   updateTimeOfDay();
+  // Sky/ocean/sand colours normally approach PAL gradually (a 1.5%-per-frame
+  // lerp) so a chakra's influence fades in smoothly during a live journey.
+  // That same slow lerp made picking a biome in the entry screen look
+  // muddy: a quick browse through several cards left colours mid-transition
+  // from whichever was picked before, not the new biome's actual palette.
+  // Snap the base palette instantly here; the per-frame lerp in
+  // updateEnvironmentColors still handles the chakra blend on top of it.
+  skyU.uZenith.value.copy(PAL.zenith);
+  skyU.uHorizon.value.copy(PAL.horizon);
+  skyU.uSunColor.value.copy(PAL.sun);
+  oceanU.uDeep.value.copy(PAL.oceanDeep);
+  oceanU.uShallow.value.copy(PAL.oceanShallow);
+  sandU.uBase.value.copy(PAL.sandBase);
+  sandU.uWet.value.copy(PAL.sandWet);
   ocean.visible=!!biome.water;
+  farGround.visible=!biome.water; // the ocean plane already extends to the horizon when there's water
   sandU.uWetOn.value=biome.wetGround?1:0;
+  sandU.uShoreOn.value=biome.water?1:0;
   // Fully-submerged biomes (open depth, not a shoreline) skip the
   // shoreline colour-swap entirely — that blend was tuned for Coastal
   // Shore's gentle tideline and otherwise just reads as mud on open water
@@ -1834,9 +1899,12 @@ function updateSun(now,el){
   cloudMat.color.copy(PAL.sun).lerp(_todB.set(0xffffff),.55);
   // Fog reads as the biome's own murk/haze — deep water's own deep colour
   // when submerged (so depth feels like it surrounds you), the sky's
-  // horizon tone otherwise (already day/night and chakra reactive).
-  _todA.copy(currentBiome.submerged?PAL.oceanDeep:PAL.horizon).lerp(PAL.zenith,.25);
-  scene.fog.color.copy(_todA);
+  // horizon tone otherwise (already day/night and chakra reactive). This
+  // must match the sky dome's OWN flat colour at and below the geometric
+  // horizon (pure uHorizon, see the sky fragment shader's h falloff) —
+  // any zenith blend here used to leave a visible pale seam right where
+  // the fogged-out ground met the sky, misread as a strip of distant water.
+  scene.fog.color.copy(currentBiome.submerged?PAL.oceanDeep:PAL.horizon);
   skyU.uTime.value=el;
   oceanU.uTime.value=el;
   sandU.uTime.value=el;
