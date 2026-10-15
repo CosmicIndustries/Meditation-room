@@ -255,6 +255,40 @@ function hashSeed(str){
 }
 const worldRng=makeRNG(hashSeed('healing-lands-world')); // one-time scenery shared by every biome
 
+// A direct JS port of the ground shader's own hash/noise/groundHeight (see
+// sandMat.onBeforeCompile below) — kept byte-for-byte equivalent so decor
+// and the campfire can sample the exact same terrain height the GPU is
+// actually displacing the ground by, instead of sitting at a fixed y=0
+// while hills rise and fall underneath them.
+function groundHash(x,y){const s=Math.sin(x*27.1+y*61.7)*43758.5453;return s-Math.floor(s);}
+function groundNoise(x,y){
+  const ix=Math.floor(x),iy=Math.floor(y);
+  let fx=x-ix,fy=y-iy;
+  fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);
+  const a=groundHash(ix,iy),b=groundHash(ix+1,iy),c=groundHash(ix,iy+1),d=groundHash(ix+1,iy+1);
+  return (a+(b-a)*fx)+((c+(d-c)*fx)-(a+(b-a)*fx))*fy;
+}
+function smoothstepJS(lo,hi,x){const t=Math.min(Math.max((x-lo)/(hi-lo),0),1);return t*t*(3-2*t);}
+// localX/localY are the sand plane's own local coordinates (world x, and
+// 4-worldZ — see sand.position.set(0,0,4) and its -90° X rotation below).
+// Must mirror groundHeight's own fire-clearing falloff exactly (same
+// centre, same 16–30 ramp) or the campfire/decor end up offset from the
+// actually-flat ground directly under them.
+function terrainHeight(localX,localY){
+  const distFromFire=Math.hypot(localX,localY+2);
+  return groundNoise(localX*0.15,localY*0.15)*sandU.uHeightAmp.value*smoothstepJS(16,30,distFromFire);
+}
+// Same idea for the floating-island platform (origin-centred, so its own
+// local Y is just -worldZ), plus the matching rim droop from platformMat's
+// own groundHeight override just below, so decor sits on the actual curved
+// surface instead of floating above it near the rim.
+function platformHeight(worldX,worldZ){
+  const localX=worldX,localY=-worldZ;
+  const base=groundNoise(localX*0.15,localY*0.15)*sandU.uHeightAmp.value;
+  const droop=-Math.pow(Math.min(Math.hypot(localX,localY)/11,1),2.2)*2.6;
+  return base+droop;
+}
+
 // ── RENDERER / SCENE / CAMERA ───────────────────────────────────────────────
 const renderer=new THREE.WebGLRenderer({antialias:Q.antialias,powerPreference:'high-performance',alpha:false});
 renderer.setSize(innerWidth,innerHeight);
@@ -826,7 +860,8 @@ const sandU={
   uFireI:{value:0},
   uTime:{value:0},
   uWetOn:{value:1},
-  uShoreOn:{value:1}
+  uShoreOn:{value:1},
+  uHeightAmp:{value:0.1}
 };
 // A genuine SVG-generated "splat" texture — feTurbulence is SVG's own
 // procedural noise primitive, rendered here at a high resolution (scaled
@@ -880,11 +915,21 @@ sandMat.onBeforeCompile=(shader)=>{
   Object.assign(shader.uniforms,sandU);
   const noiseLib=`
     varying vec2 vXY;
+    uniform float uHeightAmp;
     float hash(vec2 p){return fract(sin(dot(p,vec2(27.1,61.7)))*43758.5453);}
     float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
       float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));
       return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
-    float groundHeight(vec2 p){return noise(p*0.15)*0.1;}
+    // Flat near the fire and the decor ring around it (every prop's own
+    // fixed y offset assumes flat ground, and there's no cheap way to keep
+    // dozens of individually-placed props sitting correctly on a noise
+    // surface that moves under them) — real relief only kicks in beyond
+    // where anything is actually placed, so it reads as rolling terrain
+    // around the clearing rather than hills shoving the campfire sideways.
+    float groundHeight(vec2 p){
+      float distFromFire=length(p-vec2(0.0,-2.0));
+      return noise(p*0.15)*uHeightAmp*smoothstep(16.0,30.0,distFromFire);
+    }
   `;
   shader.vertexShader=noiseLib+shader.vertexShader
     .replace('#include <beginnormal_vertex>',`#include <beginnormal_vertex>
@@ -1017,9 +1062,19 @@ platformMat.onBeforeCompile=(shader)=>{
   // call site separately) keeps it inside the same finite-difference bump
   // the normal is already computed from, so the drooping rim also catches
   // light correctly instead of staying shaded as if it were still flat.
-  shader.vertexShader=shader.vertexShader.replace(
-    'float groundHeight(vec2 p){return noise(p*0.15)*0.1;}',
-    'float groundHeight(vec2 p){return noise(p*0.15)*0.1-pow(clamp(length(p)/11.0,0.,1.),2.2)*2.6;}');
+  // A full, independent redefinition rather than building on the land
+  // version above: the platform is small enough that the land's fire-
+  // clearing falloff would flatten the entire thing (its whole radius is
+  // well inside that falloff's reach), which would erase the rim droop
+  // this biome type actually depends on.
+  const groundHeightSrc=`    float groundHeight(vec2 p){
+      float distFromFire=length(p-vec2(0.0,-2.0));
+      return noise(p*0.15)*uHeightAmp*smoothstep(16.0,30.0,distFromFire);
+    }`;
+  const patched=shader.vertexShader.replace(groundHeightSrc,
+    'float groundHeight(vec2 p){return noise(p*0.15)*uHeightAmp-pow(clamp(length(p)/11.0,0.,1.),2.2)*2.6;}');
+  if(patched===shader.vertexShader)console.warn('floatPlatform: groundHeight patch did not match — rim droop will not apply');
+  shader.vertexShader=patched;
 };
 const floatPlatform=new THREE.Group();
 const platformTop=new THREE.Mesh(new THREE.CircleGeometry(11,40),platformMat);
@@ -1174,14 +1229,18 @@ function buildDecor(biome){
       if(Math.abs(x)<1.4&&z<2&&z>-1)continue; // keep fire pit clear
       const m=makeDecorMesh(type,decorMat,rng);
       m.traverse(c=>{if(c.isMesh){c.castShadow=true;c.receiveShadow=true;}});
+      // Ground height now actually varies (see uHeightAmp/terrainHeight), so
+      // props need to sit on it rather than at a fixed y=0 — otherwise a
+      // rise in the terrain buries them and a dip leaves them floating.
+      const gy=biome.groundless?platformHeight(x,z):terrainHeight(x,4-z);
       if(type==='log'){
-        m.position.set(x,.15,z);m.rotation.z=Math.PI/2+rng()*.4;m.rotation.y=rng()*6;
+        m.position.set(x,.15+gy,z);m.rotation.z=Math.PI/2+rng()*.4;m.rotation.y=rng()*6;
       }else if(type==='ring'){
-        m.position.set(x,.4+rng()*.5,z);m.rotation.x=rng()*6;m.rotation.y=rng()*6;
+        m.position.set(x,.4+rng()*.5+gy,z);m.rotation.x=rng()*6;m.rotation.y=rng()*6;
       }else if(tall){
-        m.position.set(x,0,z);m.rotation.y=rng()*6;
+        m.position.set(x,gy,z);m.rotation.y=rng()*6;
       }else{
-        m.position.set(x,.12,z);m.rotation.set(rng()*6,rng()*6,rng()*6);
+        m.position.set(x,.12+gy,z);m.rotation.set(rng()*6,rng()*6,rng()*6);
       }
       if(type==='quadruped'){m.userData.baseRotY=m.rotation.y;faunaGroups.push(m);}
       decorGroup.add(m);
@@ -1466,6 +1525,20 @@ function applyTheme(biome){
   skyU.uVoidBelow.value=biome.groundless?1:0;
   sandU.uWetOn.value=biome.wetGround?1:0;
   sandU.uShoreOn.value=biome.water?1:0;
+  // Real relief, not the flat plain this used to be — scaled down near any
+  // actual shoreline (real beaches/riverbanks read flatter, and a bigger
+  // bump there would fight the swash/wave visuals) and for floating-island
+  // biomes (the platform's own rim droop already does the shaping there).
+  // Capped at 0.3 for dry land: past that, props placed near the fire (at
+  // a fixed y assuming flat ground, corrected only by a coarse JS-side
+  // height sample) visibly part ways from the actual GPU-displaced surface
+  // under them, even inside the fire-clearing falloff below — 0.1→0.3 is
+  // still a real, visible improvement without that mismatch showing.
+  sandU.uHeightAmp.value=biome.groundless?0.1:biome.water?0.12:biome.wetGround?0.15:0.3;
+  // The campfire sits at a fixed (x,z) but the ground under it now has
+  // real relief too — without this it would float or sink relative to
+  // whatever height that particular spot's noise happens to land on.
+  fireGrp.position.y=biome.groundless?platformHeight(firePos.x,firePos.z):terrainHeight(firePos.x,4-firePos.z);
   // Fully-submerged biomes (open depth, not a shoreline) skip the
   // shoreline colour-swap entirely — that blend was tuned for Coastal
   // Shore's gentle tideline and otherwise just reads as mud on open water
