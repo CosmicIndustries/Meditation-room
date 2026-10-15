@@ -1544,7 +1544,11 @@ function applyTheme(biome){
   // height sample) visibly part ways from the actual GPU-displaced surface
   // under them, even inside the fire-clearing falloff below — 0.1→0.3 is
   // still a real, visible improvement without that mismatch showing.
-  sandU.uHeightAmp.value=biome.groundless?0.1:biome.water?0.12:biome.wetGround?0.15:0.3;
+  let heightAmp=0.3; // dry land: real relief
+  if(biome.groundless)heightAmp=0.1; // the platform's own rim droop does the shaping
+  else if(biome.water)heightAmp=0.12; // shorelines read flatter
+  else if(biome.wetGround)heightAmp=0.15;
+  sandU.uHeightAmp.value=heightAmp;
   // The campfire sits at a fixed (x,z) but the ground under it now has
   // real relief too — without this it would float or sink relative to
   // whatever height that particular spot's noise happens to land on.
