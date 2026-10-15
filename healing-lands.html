@@ -786,7 +786,14 @@ const sandU={
 // analytic shader noise doesn't. Image decoding is async, so the texture
 // exists (as a neutral placeholder) immediately and swaps in once the SVG
 // has rasterized a frame or two later — nothing else waits on it.
-function makeSplatTexture(size,seedStr){
+// Textures are generated once as plain BLACK AND WHITE and reused as-is
+// across every biome; colour comes entirely from multiplying by each
+// material's own tint (map x color is automatic in Three.js — no shader
+// work needed), the same way a real engine shares one grayscale detail/mask
+// texture across many tinted materials instead of baking a colour copy per
+// skin. One shared texture asset standing in for 42+ biomes' worth of
+// "different" ground and decor surfaces, not 42 textures.
+function makeSplatTexture(size,seedStr,baseFreq){
   const cnv=document.createElement('canvas');cnv.width=cnv.height=size;
   const ctx=cnv.getContext('2d');
   ctx.fillStyle='#808080';ctx.fillRect(0,0,size,size);
@@ -798,15 +805,21 @@ function makeSplatTexture(size,seedStr){
   const seed=hashSeed(seedStr)%1000;
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">`
     +`<filter id="n" x="0" y="0" width="100%" height="100%">`
-    +`<feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" seed="${seed}" stitchTiles="stitch"/>`
+    +`<feTurbulence type="fractalNoise" baseFrequency="${baseFreq||0.9}" numOctaves="4" seed="${seed}" stitchTiles="stitch" result="t"/>`
+    +`<feColorMatrix in="t" type="saturate" values="0"/>` // force true grayscale — no per-channel colour tint baked in
     +`</filter><rect width="100%" height="100%" filter="url(#n)"/></svg>`;
   const img=new Image();
   img.onload=()=>{ctx.drawImage(img,0,0,size,size);tex.needsUpdate=true;};
   img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
   return tex;
 }
-const groundSplat=makeSplatTexture([256,384,512][qTier],'ground-splat');
+const groundSplat=makeSplatTexture([256,384,512][qTier],'ground-splat',0.9);
 sandU.uGrain={value:groundSplat};
+// A finer-grained grayscale texture for decor (rock/bark/fur-scale detail),
+// shared by every biome's decorMat below the same way — one texture, many
+// tints, rather than a per-biome copy.
+const decorSplat=makeSplatTexture([192,256,320][qTier],'decor-splat',1.8);
+decorSplat.repeat.set(2,2);
 
 // The ground uses MeshStandardMaterial (via onBeforeCompile) rather than a
 // raw ShaderMaterial so it gets Three's real lighting + shadow-receiving
@@ -948,7 +961,10 @@ function buildDecor(biome){
   }
   faunaGroups.length=0;
   if(decorMat)decorMat.dispose();
-  decorMat=new THREE.MeshStandardMaterial({color:biome.tint,roughness:.55}); // <1 so sun specular actually shows
+  // map x color: the shared grayscale decorSplat texture supplies fine
+  // surface detail, biome.tint supplies the colour — one texture asset,
+  // every biome's own look, instead of a colour-baked texture per biome.
+  decorMat=new THREE.MeshStandardMaterial({color:biome.tint,map:decorSplat,roughness:.55});
   const types=(biome.decor&&biome.decor.length)?biome.decor:['rock'];
   const rng=makeRNG(hashSeed(biome.id)); // same biome -> same layout, every time
   types.forEach(type=>{
