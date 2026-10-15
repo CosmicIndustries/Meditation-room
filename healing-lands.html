@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Healing Sands</title>
+<title>Healing Lands</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cinzel+Decorative&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{overflow:hidden;background:#140b08;font-family:'Cinzel',Georgia,serif}
-#kindle,#again,#snd,#gear,#panel .opt{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#kindle,#again,#snd,#gear,#panel .opt,.biomeTab,.biomeCard,#beginBtn,#vrBtn{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 #hud{position:fixed;top:0;left:0;right:0;padding:18px 16px 0;text-align:center;pointer-events:none;z-index:10}
 #hTitle{font-family:'Cinzel Decorative',serif;font-size:clamp(12px,2.1vw,24px);letter-spacing:5px;color:#ffe3c2;text-transform:uppercase;text-shadow:0 0 60px currentColor,0 0 22px rgba(255,150,70,.8);transition:color .9s}
 #hSub{font-size:clamp(8px,1.15vw,12px);color:rgba(255,220,190,.55);margin-top:8px;letter-spacing:2.2px;transition:color .8s}
@@ -55,11 +55,26 @@ body{overflow:hidden;background:#140b08;font-family:'Cinzel',Georgia,serif}
 #useWeather{flex:0 0 auto;padding:5px 10px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
-#enter{position:fixed;inset:0;background:#140b08;z-index:100;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;color:rgba(255,190,130,.75);font-size:11px;letter-spacing:4px;text-transform:uppercase;transition:opacity 1.3s;font-family:'Cinzel Decorative',serif;cursor:pointer;text-align:center;padding:20px}
-#enter .g{font-size:34px;animation:gp 2.6s ease-in-out infinite}
+#enter{position:fixed;inset:0;background:#140b08;z-index:100;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:rgba(255,190,130,.75);font-size:11px;letter-spacing:4px;text-transform:uppercase;transition:opacity 1.3s;font-family:'Cinzel Decorative',serif;text-align:center;padding:16px;overflow:hidden}
+#enter .g{font-size:26px;animation:gp 2.6s ease-in-out infinite}
 @keyframes gp{0%,100%{opacity:.3;transform:scale(.9)}50%{opacity:.85;transform:scale(1.08)}}
 #enter small{font-size:8px;letter-spacing:2px;color:rgba(255,220,195,.4);font-family:'Cinzel',serif}
 #enter.out{opacity:0;pointer-events:none}
+#enterTitle{font-size:clamp(16px,3.4vw,26px);letter-spacing:5px}
+#biomeTabs{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.biomeTab{padding:6px 13px;border-radius:20px;border:1px solid rgba(255,190,130,.3);font-size:9px;letter-spacing:1.5px;cursor:pointer;transition:all .25s;background:rgba(255,255,255,.03)}
+.biomeTab.sel{background:rgba(120,60,20,.6);border-color:rgba(255,190,110,.9);color:#fff}
+.biomeTab:hover{border-color:rgba(255,190,110,.6)}
+#biomeList{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:7px;max-width:680px;width:100%;max-height:30vh;overflow-y:auto;padding:10px 4px;margin:2px 0}
+.biomeCard{padding:9px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.15);font-size:9px;letter-spacing:.8px;cursor:pointer;transition:all .2s;background:rgba(255,255,255,.02);text-transform:none;line-height:1.3}
+.biomeCard.sel{border-color:rgba(255,190,110,.95);background:rgba(120,60,20,.5);color:#fff}
+.biomeCard:hover{border-color:rgba(255,190,110,.55)}
+#beginBtn{margin-top:4px;padding:11px 30px;border-radius:30px;background:rgba(40,16,6,.55);border:1px solid rgba(255,160,90,.4);color:#ffd9ad;font-size:11px;letter-spacing:3px;cursor:pointer;transition:all .3s}
+#beginBtn:hover{border-color:rgba(255,190,110,.9);background:rgba(60,24,8,.7);transform:scale(1.04)}
+
+#vrBtn{position:fixed;bottom:24px;right:15px;z-index:10;padding:9px 16px;border-radius:24px;background:rgba(20,8,4,.55);border:1px solid rgba(255,190,130,.35);color:rgba(255,210,170,.8);font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .3s;display:none;user-select:none}
+#vrBtn.show{display:block}
+#vrBtn:hover{border-color:rgba(255,160,70,.8);color:#fff}
 
 #vignette{position:fixed;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse at 50% 62%,transparent 38%,rgba(10,4,2,.78) 100%);}
 #grain{position:fixed;inset:0;pointer-events:none;z-index:3;opacity:.03;mix-blend-mode:screen}
@@ -68,11 +83,23 @@ body{overflow:hidden;background:#140b08;font-family:'Cinzel',Georgia,serif}
 <body>
 <div id="vignette"></div>
 <canvas id="grain"></canvas>
-<div id="enter"><div class="g">&#9734;</div><div>Healing Sands</div><small>Tap to step onto the shore</small></div>
+<div id="enter">
+  <div class="g">&#9734;</div>
+  <div id="enterTitle">Healing Lands</div>
+  <small>Choose where to sit, then kindle the fire</small>
+  <div id="biomeTabs">
+    <div class="biomeTab" data-cat="terrestrial">Terrestrial</div>
+    <div class="biomeTab sel" data-cat="aquatic">Aquatic</div>
+    <div class="biomeTab" data-cat="air">Air &amp; Fantasy</div>
+    <div class="biomeTab" data-cat="misc">Other Realms</div>
+  </div>
+  <div id="biomeList"></div>
+  <div id="beginBtn">Begin &#9734;</div>
+</div>
 
 <div id="hud">
-  <div id="hTitle">Healing Sands</div>
-  <div id="hSub">Watch the tide. When you are ready, kindle the fire.</div>
+  <div id="hTitle">Healing Lands</div>
+  <div id="hSub">Watch, and breathe. When you are ready, kindle the fire.</div>
   <div id="hStage"></div>
 </div>
 <div id="dots"></div>
@@ -80,6 +107,7 @@ body{overflow:hidden;background:#140b08;font-family:'Cinzel',Georgia,serif}
 <div id="again">Begin Again</div>
 <div id="gear" title="Settings">&#9881;</div>
 <div id="snd" class="on" title="Mute / unmute">&#9834;</div>
+<div id="vrBtn" title="Enter VR">&#9729; Enter VR</div>
 <div id="panel">
   <div class="row">Journey length<div class="opts" data-k="minutes">
     <div class="opt" data-v="10">10m</div><div class="opt sel" data-v="15">15m</div>
@@ -132,6 +160,7 @@ renderer.setPixelRatio(PR);
 renderer.outputEncoding=THREE.sRGBEncoding;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=1.08;
+renderer.xr.enabled=true;
 document.body.appendChild(renderer.domElement);
 
 const scene=new THREE.Scene();
@@ -167,22 +196,218 @@ let tp=null;
 dom.addEventListener('touchstart',e=>{tp=e.touches[0]},{passive:true});
 dom.addEventListener('touchmove',e=>{const t=e.touches[0];cAzT=Math.max(-.42,Math.min(.42,cAzT-(t.clientX-tp.clientX)*.0022));tp=t},{passive:true});
 
+// ── BIOMES ───────────────────────────────────────────────────────────────────
+// Healing Lands generalizes the original single beach scene into a library
+// of procedural "realms" — the same campfire/chakra ritual and real-clock
+// day/night cycle, re-skinned by a compact data record per biome instead of
+// bespoke code per biome. Each record seeds a day/night palette (below) plus
+// decor archetypes and an ambient particle layer; only the flagship
+// "Coastal Shore" biome keeps its original bespoke ocean/sand shaders.
+const BIOMES=[
+  {id:'pine-forest', name:'Pine Forest', cat:'terrestrial',
+   sky:{h:0.58,s:0.45}, ground:{h:0.33,s:0.35,l:0.28}, water:null,
+   wetGround:false, decor:['spike','log','rock'], tint:0x2f3a28, density:1.4,
+   particle:{type:'pollen',color:0xcfe8a0,count:120,speed:0.3,spread:45}, windBrightness:0.4},
+  {id:'desert-dunes', name:'Desert Dunes', cat:'terrestrial',
+   sky:{h:0.11,s:0.5}, ground:{h:0.09,s:0.55,l:0.62}, water:null,
+   wetGround:false, decor:['rock','spike'], tint:0xc98a4b, density:0.5,
+   particle:{type:'dust',color:0xe8c99a,count:150,speed:0.6,spread:60}, windBrightness:0.85},
+  {id:'alpine-tundra', name:'Alpine Tundra', cat:'terrestrial',
+   sky:{h:0.56,s:0.3}, ground:{h:0.15,s:0.08,l:0.78}, water:null,
+   wetGround:false, decor:['rock','spike'], tint:0x8a9a95, density:0.6,
+   particle:{type:'snow',color:0xffffff,count:140,speed:0.4,spread:50}, windBrightness:0.9},
+  {id:'mountain-summit', name:'Mountain Summit', cat:'terrestrial',
+   sky:{h:0.57,s:0.4}, ground:{h:0.6,s:0.05,l:0.7}, water:null,
+   wetGround:false, decor:['rock','pillar','spike'], tint:0x707880, density:0.7,
+   particle:{type:'snow',color:0xf5f5ff,count:100,speed:0.5,spread:55}, windBrightness:1.0},
+  {id:'savanna-plains', name:'Savanna Plains', cat:'terrestrial',
+   sky:{h:0.13,s:0.4}, ground:{h:0.12,s:0.45,l:0.52}, water:null,
+   wetGround:false, decor:['rock','log'], tint:0xc2a24a, density:0.5,
+   particle:{type:'pollen',color:0xe8d48a,count:90,speed:0.35,spread:50}, windBrightness:0.75},
+  {id:'rainforest-canopy', name:'Rainforest Canopy', cat:'terrestrial',
+   sky:{h:0.42,s:0.35}, ground:{h:0.36,s:0.55,l:0.24}, water:null,
+   wetGround:true, decor:['log','spike','rock'], tint:0x1f4a2e, density:1.8,
+   particle:{type:'spores',color:0x9fe8a0,count:160,speed:0.25,spread:40}, windBrightness:0.3},
+  {id:'volcanic-highlands', name:'Volcanic Highlands', cat:'terrestrial',
+   sky:{h:0.05,s:0.5}, ground:{h:0.02,s:0.4,l:0.14}, water:null,
+   wetGround:false, decor:['rock','spike','pillar'], tint:0x3a2420, density:0.8,
+   particle:{type:'embers',color:0xff8a3c,count:130,speed:0.7,spread:45}, windBrightness:0.55},
+  {id:'red-canyon', name:'Red Canyon', cat:'terrestrial',
+   sky:{h:0.08,s:0.45}, ground:{h:0.04,s:0.55,l:0.42}, water:null,
+   wetGround:false, decor:['rock','pillar'], tint:0xa8502e, density:0.6,
+   particle:{type:'dust',color:0xd98a5c,count:100,speed:0.5,spread:55}, windBrightness:0.8},
+  {id:'crystal-cavern', name:'Crystal Cavern', cat:'terrestrial',
+   sky:{h:0.65,s:0.15}, ground:{h:0.68,s:0.3,l:0.18}, water:null,
+   wetGround:true, decor:['crystal','spike','rock'], tint:0x6a4ac2, density:1.2,
+   particle:{type:'bioluminescence',color:0x7ad8ff,count:110,speed:0.2,spread:35}, windBrightness:0.15},
+  {id:'bamboo-grove', name:'Bamboo Grove', cat:'terrestrial',
+   sky:{h:0.3,s:0.3}, ground:{h:0.28,s:0.3,l:0.34}, water:null,
+   wetGround:false, decor:['spike','rock','log'], tint:0x4a6a34, density:1.5,
+   particle:{type:'leaves',color:0x9ac25a,count:95,speed:0.3,spread:40}, windBrightness:0.5},
+  {id:'coastal-shore', name:'Coastal Shore', cat:'aquatic',
+   sky:{h:0.58,s:0.55}, ground:{h:0.11,s:0.42,l:0.74}, water:{h:0.52,s:0.55},
+   wetGround:true, decor:['rock','log'], tint:0x2a2420, density:1.0,
+   particle:{type:'spores',color:0xffe3c2,count:0,speed:0,spread:0}, windBrightness:0.6},
+  {id:'coral-reef', name:'Coral Reef', cat:'aquatic',
+   sky:{h:0.55,s:0.5}, ground:{h:0.08,s:0.5,l:0.68}, water:{h:0.48,s:0.6},
+   wetGround:true, decor:['ring','rock','crystal'], tint:0xff7a5c, density:1.1,
+   particle:{type:'bubbles',color:0xbff0ff,count:120,speed:0.5,spread:40}, windBrightness:0.5},
+  {id:'arctic-ice', name:'Arctic Ice Field', cat:'aquatic',
+   sky:{h:0.57,s:0.25}, ground:{h:0.55,s:0.1,l:0.85}, water:{h:0.54,s:0.4},
+   wetGround:true, decor:['spike','crystal','rock'], tint:0xbfe8f0, density:0.5,
+   particle:{type:'snow',color:0xffffff,count:130,speed:0.45,spread:55}, windBrightness:0.95},
+  {id:'abyssal-deep', name:'Abyssal Deep', cat:'aquatic',
+   sky:{h:0.65,s:0.15}, ground:{h:0.68,s:0.2,l:0.08}, water:{h:0.64,s:0.3},
+   wetGround:false, decor:['rock','crystal','pillar'], tint:0x1a2a3a, density:0.5,
+   particle:{type:'bioluminescence',color:0x4ad8e8,count:150,speed:0.2,spread:50}, windBrightness:0.1},
+  {id:'still-lake', name:'Still Mountain Lake', cat:'aquatic',
+   sky:{h:0.56,s:0.4}, ground:{h:0.3,s:0.3,l:0.4}, water:{h:0.55,s:0.35},
+   wetGround:false, decor:['rock','log'], tint:0x3a4a3a, density:0.7,
+   particle:{type:'pollen',color:0xdfe8c0,count:70,speed:0.2,spread:45}, windBrightness:0.55},
+  {id:'mountain-river', name:'Mountain River', cat:'aquatic',
+   sky:{h:0.57,s:0.35}, ground:{h:0.25,s:0.25,l:0.45}, water:{h:0.5,s:0.45},
+   wetGround:true, decor:['rock','log'], tint:0x5a6a52, density:0.9,
+   particle:{type:'spores',color:0xcfe8c0,count:80,speed:0.4,spread:40}, windBrightness:0.7},
+  {id:'misty-wetland', name:'Misty Wetland', cat:'aquatic',
+   sky:{h:0.4,s:0.2}, ground:{h:0.3,s:0.3,l:0.26}, water:{h:0.35,s:0.3},
+   wetGround:true, decor:['log','rock'], tint:0x3a4028, density:1.1,
+   particle:{type:'spores',color:0x9ab07a,count:100,speed:0.25,spread:40}, windBrightness:0.3},
+  {id:'mangrove-shallows', name:'Mangrove Shallows', cat:'aquatic',
+   sky:{h:0.45,s:0.3}, ground:{h:0.32,s:0.4,l:0.28}, water:{h:0.42,s:0.35},
+   wetGround:true, decor:['log','rock','spike'], tint:0x2f4a3a, density:1.3,
+   particle:{type:'fireflies',color:0xdfff9a,count:90,speed:0.2,spread:35}, windBrightness:0.35},
+  {id:'kelp-forest', name:'Kelp Forest', cat:'aquatic',
+   sky:{h:0.62,s:0.2}, ground:{h:0.4,s:0.35,l:0.2}, water:{h:0.48,s:0.5},
+   wetGround:false, decor:['spike','rock','crystal'], tint:0x2a6a4a, density:1.4,
+   particle:{type:'bubbles',color:0xaef0e0,count:140,speed:0.35,spread:45}, windBrightness:0.2},
+  {id:'hydrothermal-vent', name:'Hydrothermal Vent', cat:'aquatic',
+   sky:{h:0.68,s:0.15}, ground:{h:0.05,s:0.3,l:0.15}, water:{h:0.6,s:0.25},
+   wetGround:false, decor:['pillar','rock','crystal'], tint:0x6a3a2a, density:0.9,
+   particle:{type:'bubbles',color:0xffb070,count:110,speed:0.5,spread:40}, windBrightness:0.15},
+  {id:'sky-islands', name:'Sky Islands', cat:'air',
+   sky:{h:0.58,s:0.5}, ground:{h:0.3,s:0.35,l:0.42}, water:null,
+   wetGround:false, decor:['rock','log','ring'], tint:0x5a8a4a, density:0.8,
+   particle:{type:'dust',color:0xdfe8ff,count:90,speed:0.3,spread:60}, windBrightness:0.9},
+  {id:'cloud-sea', name:'Cloud Sea', cat:'air',
+   sky:{h:0.56,s:0.35}, ground:{h:0.58,s:0.05,l:0.88}, water:null,
+   wetGround:false, decor:['ring','pillar'], tint:0xffffff, density:0.5,
+   particle:{type:'dust',color:0xffffff,count:100,speed:0.25,spread:60}, windBrightness:0.8},
+  {id:'aurora-veil', name:'Aurora Veil', cat:'air',
+   sky:{h:0.75,s:0.4}, ground:{h:0.55,s:0.15,l:0.2}, water:null,
+   wetGround:false, decor:['crystal','spike','rock'], tint:0x4ae8a0, density:0.6,
+   particle:{type:'stardust',color:0x8affc2,count:130,speed:0.3,spread:55}, windBrightness:0.85},
+  {id:'nebula-drift', name:'Nebula Drift', cat:'air',
+   sky:{h:0.78,s:0.45}, ground:{h:0.8,s:0.2,l:0.12}, water:null,
+   wetGround:false, decor:['crystal','ring','pillar'], tint:0xa05aff, density:0.5,
+   particle:{type:'stardust',color:0xd0a0ff,count:170,speed:0.25,spread:70}, windBrightness:0.6},
+  {id:'astral-plane', name:'Astral Plane', cat:'air',
+   sky:{h:0.68,s:0.3}, ground:{h:0.65,s:0.1,l:0.3}, water:null,
+   wetGround:false, decor:['ring','crystal','pillar'], tint:0x7ac2ff, density:0.6,
+   particle:{type:'stardust',color:0xbfe0ff,count:140,speed:0.2,spread:65}, windBrightness:0.5},
+  {id:'lucid-dreamscape', name:'Lucid Dreamscape', cat:'air',
+   sky:{h:0.85,s:0.4}, ground:{h:0.9,s:0.25,l:0.5}, water:null,
+   wetGround:false, decor:['ring','crystal','spike'], tint:0xe88ad0, density:0.7,
+   particle:{type:'pollen',color:0xffc2e8,count:110,speed:0.25,spread:55}, windBrightness:0.5},
+  {id:'storm-eye', name:'Eye of the Storm', cat:'air',
+   sky:{h:0.6,s:0.3}, ground:{h:0.58,s:0.1,l:0.5}, water:null,
+   wetGround:false, decor:['ring','pillar'], tint:0x8a98a8, density:0.5,
+   particle:{type:'rain',color:0xaad0e8,count:90,speed:0.8,spread:60}, windBrightness:0.95},
+  {id:'celestial-temple', name:'Celestial Temple', cat:'air',
+   sky:{h:0.62,s:0.3}, ground:{h:0.14,s:0.1,l:0.75}, water:null,
+   wetGround:false, decor:['pillar','ring'], tint:0xf0e2b0, density:0.6,
+   particle:{type:'stardust',color:0xfff0c0,count:100,speed:0.2,spread:50}, windBrightness:0.7},
+  {id:'starlight-steppe', name:'Starlight Steppe', cat:'air',
+   sky:{h:0.7,s:0.35}, ground:{h:0.6,s:0.08,l:0.3}, water:null,
+   wetGround:false, decor:['spike','rock','crystal'], tint:0x6a7ac2, density:0.5,
+   particle:{type:'stardust',color:0xc2d0ff,count:120,speed:0.2,spread:60}, windBrightness:0.9},
+  {id:'wind-spire-peaks', name:'Wind Spire Peaks', cat:'air',
+   sky:{h:0.57,s:0.45}, ground:{h:0.5,s:0.1,l:0.55}, water:null,
+   wetGround:false, decor:['spike','pillar','ring'], tint:0x9ab0c2, density:0.6,
+   particle:{type:'dust',color:0xe8f0ff,count:100,speed:0.5,spread:65}, windBrightness:1.0},
+  {id:'giants-garden', name:"Giant's Garden", cat:'misc',
+   sky:{h:0.55,s:0.4}, ground:{h:0.28,s:0.45,l:0.32}, water:null,
+   wetGround:false, decor:['log','rock','pillar'], tint:0x4a6a2a, density:1.0,
+   particle:{type:'pollen',color:0xd8e89a,count:100,speed:0.25,spread:70}, windBrightness:0.6},
+  {id:'dewdrop-meadow', name:'Dewdrop Meadow', cat:'misc',
+   sky:{h:0.4,s:0.3}, ground:{h:0.3,s:0.4,l:0.3}, water:{h:0.52,s:0.4},
+   wetGround:true, decor:['spike','crystal','rock'], tint:0x7ac26a, density:1.6,
+   particle:{type:'pollen',color:0xcfe88a,count:130,speed:0.2,spread:30}, windBrightness:0.45},
+  {id:'quantum-foam', name:'Quantum Foam', cat:'misc',
+   sky:{h:0.78,s:0.2}, ground:{h:0.75,s:0.15,l:0.15}, water:null,
+   wetGround:false, decor:['crystal','ring','spike'], tint:0x9affe8, density:0.9,
+   particle:{type:'bioluminescence',color:0x9affe8,count:180,speed:0.3,spread:35}, windBrightness:0.3},
+  {id:'high-stratosphere', name:'High Stratosphere', cat:'misc',
+   sky:{h:0.62,s:0.55}, ground:{h:0.6,s:0.1,l:0.6}, water:null,
+   wetGround:false, decor:['ring','pillar'], tint:0xcfe0ff, density:0.4,
+   particle:{type:'stardust',color:0xffffff,count:90,speed:0.2,spread:70}, windBrightness:1.0},
+  {id:'mirror-dimension', name:'Mirror Dimension', cat:'misc',
+   sky:{h:0.58,s:0.25}, ground:{h:0.58,s:0.05,l:0.5}, water:{h:0.58,s:0.2},
+   wetGround:false, decor:['ring','crystal','pillar'], tint:0xd0e8ff, density:0.6,
+   particle:{type:'dust',color:0xe8f4ff,count:90,speed:0.2,spread:50}, windBrightness:0.5},
+  {id:'clockwork-gearscape', name:'Clockwork Gearscape', cat:'misc',
+   sky:{h:0.1,s:0.2}, ground:{h:0.1,s:0.35,l:0.3}, water:null,
+   wetGround:false, decor:['ring','pillar','rock'], tint:0xb8822a, density:1.0,
+   particle:{type:'sparks',color:0xffcf6a,count:100,speed:0.4,spread:40}, windBrightness:0.45},
+  {id:'bioluminescent-depths', name:'Bioluminescent Depths', cat:'misc',
+   sky:{h:0.72,s:0.3}, ground:{h:0.7,s:0.25,l:0.12}, water:null,
+   wetGround:true, decor:['crystal','spike','rock'], tint:0x4ae0c2, density:1.1,
+   particle:{type:'bioluminescence',color:0x6af0d0,count:150,speed:0.2,spread:40}, windBrightness:0.15},
+  {id:'glitch-matrix', name:'Glitch Matrix', cat:'misc',
+   sky:{h:0.35,s:0.6}, ground:{h:0.35,s:0.5,l:0.1}, water:null,
+   wetGround:false, decor:['ring','pillar','crystal'], tint:0x4aff7a, density:0.7,
+   particle:{type:'sparks',color:0x7affa0,count:140,speed:0.5,spread:45}, windBrightness:0.4},
+  {id:'time-loop-ruins', name:'Time-Loop Ruins', cat:'misc',
+   sky:{h:0.65,s:0.2}, ground:{h:0.1,s:0.2,l:0.35}, water:null,
+   wetGround:false, decor:['pillar','rock','ring'], tint:0x9a8a6a, density:0.9,
+   particle:{type:'dust',color:0xe8d8b0,count:80,speed:0.15,spread:45}, windBrightness:0.4},
+  {id:'elemental-forge', name:'Elemental Forge', cat:'misc',
+   sky:{h:0.06,s:0.55}, ground:{h:0.04,s:0.5,l:0.18}, water:null,
+   wetGround:false, decor:['pillar','rock','spike'], tint:0xff6a2a, density:0.9,
+   particle:{type:'embers',color:0xffa03c,count:160,speed:0.6,spread:40}, windBrightness:0.6},
+  {id:'dreamroot-library', name:'Dreamroot Library', cat:'misc',
+   sky:{h:0.68,s:0.25}, ground:{h:0.3,s:0.3,l:0.25}, water:null,
+   wetGround:false, decor:['pillar','log','crystal'], tint:0x4a3a6a, density:1.2,
+   particle:{type:'fireflies',color:0xc2a0ff,count:100,speed:0.2,spread:40}, windBrightness:0.3},
+  {id:'glass-desert', name:'Glass Desert', cat:'misc',
+   sky:{h:0.14,s:0.35}, ground:{h:0.55,s:0.15,l:0.7}, water:null,
+   wetGround:false, decor:['crystal','spike','rock'], tint:0xbfe8f0, density:0.5,
+   particle:{type:'dust',color:0xeaf6ff,count:100,speed:0.4,spread:60}, windBrightness:0.85},
+];
+
+function hslHex(h,s,l){
+  const c=new THREE.Color();
+  c.setHSL(((h%1)+1)%1,THREE.MathUtils.clamp(s,0,1),THREE.MathUtils.clamp(l,0,1));
+  return c.getHex();
+}
+
 // ── TIME OF DAY ──────────────────────────────────────────────────────────────
 // A continuous day/night cycle read from the phone's own clock, not a
-// one-time dawn/dusk guess. Keyframe palettes are interpolated by the
-// current fractional hour (sh = sun height, same units as before), and
-// re-read every frame — leave the tab open and the sky keeps advancing
-// with real time.
-const TOD_KEYS=[
-  {h:0, zenith:0x0a0e1e,horizon:0x14182c,sun:0x8fa0c8,sandBase:0x3a3428,sandWet:0x22201c,oceanDeep:0x0a1624,oceanShallow:0x16283c,sh:-.30},
-  {h:5, zenith:0x16223f,horizon:0x3a3458,sun:0xd9b98a,sandBase:0x55493a,sandWet:0x32291f,oceanDeep:0x0f2438,oceanShallow:0x1e3a52,sh:-.05},
-  {h:7, zenith:0x1b2a52,horizon:0xffb46a,sun:0xfff1c9,sandBase:0xd9b98a,sandWet:0x8d7a63,oceanDeep:0x163a52,oceanShallow:0x3f93a8,sh:.12},
-  {h:12,zenith:0x2f7fd6,horizon:0xbfe0f5,sun:0xfffdf2,sandBase:0xe8d2a0,sandWet:0x9c8a6e,oceanDeep:0x0f5a82,oceanShallow:0x3fb0c8,sh:.85},
-  {h:17,zenith:0x2a5a9a,horizon:0xffcf8a,sun:0xfff0c0,sandBase:0xe0bb80,sandWet:0x8d7a5a,oceanDeep:0x14507a,oceanShallow:0x3a96ac,sh:.35},
-  {h:19,zenith:0x18142c,horizon:0xff7a4d,sun:0xffd9a0,sandBase:0xc9986a,sandWet:0x6b5648,oceanDeep:0x14263f,oceanShallow:0x2f6e86,sh:.08},
-  {h:21,zenith:0x0e1430,horizon:0x4a3458,sun:0xcf9f8a,sandBase:0x5e4e3a,sandWet:0x362c20,oceanDeep:0x0c1e30,oceanShallow:0x1c3650,sh:-.08},
-  {h:24,zenith:0x0a0e1e,horizon:0x14182c,sun:0x8fa0c8,sandBase:0x3a3428,sandWet:0x22201c,oceanDeep:0x0a1624,oceanShallow:0x16283c,sh:-.30},
-];
+// one-time dawn/dusk guess, re-read every frame so the sky keeps advancing
+// with real time. The 8 keyframes are generated procedurally from each
+// biome's base hues (buildTOD) rather than hand-authored per biome, so all
+// 42+ realms share one lighting curve instead of needing their own.
+const TOD_HOURS=[0,5,7,12,17,19,21,24];
+const TOD_SUN_H=[-.30,-.05,.12,.85,.35,.08,-.08,-.30];
+function buildTOD(biome){
+  return TOD_HOURS.map((hr,i)=>{
+    const sh=TOD_SUN_H[i];
+    const day=THREE.MathUtils.clamp(sh*0.9+0.35,0,1);        // 0 at night, ~1 at noon
+    const dawn=Math.max(0,1-Math.abs(sh)*2.2);               // peaks near sunrise/sunset
+    const zenith=hslHex(biome.sky.h,biome.sky.s*(.5+day*.5),THREE.MathUtils.lerp(.06,.5,day));
+    const horizon=hslHex(biome.sky.h+(dawn>.3?.06:0),biome.sky.s*(.4+dawn*.5),THREE.MathUtils.lerp(.08,.78,Math.max(day,dawn*.8)));
+    const sun=hslHex(.11-dawn*.03,.55+dawn*.3,THREE.MathUtils.lerp(.55,.97,day));
+    const gBase=hslHex(biome.ground.h,biome.ground.s*(.4+day*.6),THREE.MathUtils.lerp(biome.ground.l*.3,biome.ground.l,day));
+    const gWet=hslHex(biome.ground.h,biome.ground.s*(.5+day*.5),THREE.MathUtils.lerp(biome.ground.l*.18,biome.ground.l*.55,day));
+    let wDeep=0x0a1624,wShallow=0x16283c;
+    if(biome.water){
+      wDeep=hslHex(biome.water.h,biome.water.s*(.5+day*.4),THREE.MathUtils.lerp(.05,.28,day));
+      wShallow=hslHex(biome.water.h+.03,biome.water.s*(.45+day*.4),THREE.MathUtils.lerp(.10,.52,day));
+    }
+    return {h:hr,zenith,horizon,sun,sandBase:gBase,sandWet:gWet,oceanDeep:wDeep,oceanShallow:wShallow,sh};
+  });
+}
+let currentBiome=BIOMES.find(b=>b.id==='coastal-shore')||BIOMES[0];
+let TOD_KEYS=buildTOD(currentBiome);
 const PAL={zenith:new THREE.Color(),horizon:new THREE.Color(),sun:new THREE.Color(),sandBase:new THREE.Color(),sandWet:new THREE.Color(),oceanDeep:new THREE.Color(),oceanShallow:new THREE.Color(),sh:0};
 const TOD_FIELDS=['zenith','horizon','sun','sandBase','sandWet','oceanDeep','oceanShallow'];
 const _todA=new THREE.Color(),_todB=new THREE.Color();
@@ -378,7 +603,8 @@ const sandU={
   uWet:{value:new THREE.Color(PAL.sandWet)},
   uGlow:{value:new THREE.Color(0xff9944)},
   uFireI:{value:0},
-  uTime:{value:0}
+  uTime:{value:0},
+  uWetOn:{value:1}
 };
 const sand=new THREE.Mesh(new THREE.PlaneGeometry(60,20,sSeg,Math.trunc(sSeg*0.4)),new THREE.ShaderMaterial({
   uniforms:sandU,
@@ -392,7 +618,7 @@ const sand=new THREE.Mesh(new THREE.PlaneGeometry(60,20,sSeg,Math.trunc(sSeg*0.4
       float bump=noise(position.xy*0.15)*0.1;
       gl_Position=projectionMatrix*modelViewMatrix*vec4(position.xy,bump,1.0);
     }`,
-  fragmentShader:`uniform vec3 uBase;uniform vec3 uWet;uniform vec3 uGlow;uniform float uFireI;uniform float uTime;
+  fragmentShader:`uniform vec3 uBase;uniform vec3 uWet;uniform vec3 uGlow;uniform float uFireI;uniform float uTime;uniform float uWetOn;
     varying vec2 vXY;
     float hash(vec2 p){return fract(sin(dot(p,vec2(27.1,61.7)))*43758.5453);}
     float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
@@ -418,9 +644,9 @@ const sand=new THREE.Mesh(new THREE.PlaneGeometry(60,20,sSeg,Math.trunc(sSeg*0.4
       float swashWet=smoothstep(reachY-2.0,reachY+1.2,vXY.y);
       float edgeBand=1.0-smoothstep(0.0,2.6,abs(vXY.y-reachY));
 
-      float wetness=max(wetT*0.55,swashWet*0.95);
+      float wetness=max(wetT*0.55,swashWet*0.95)*uWetOn;
       col=mix(col,uWet*0.8,wetness);
-      col=mix(col,vec3(0.96,0.98,1.0),edgeBand*0.75); // foam right at the moving waterline
+      col=mix(col,vec3(0.96,0.98,1.0),edgeBand*0.75*uWetOn); // foam right at the moving waterline
 
       float d=length(vXY-vec2(0.0,-2.0));
       float glow=uFireI*exp(-d*d*0.045);
@@ -432,22 +658,54 @@ sand.rotation.x=-Math.PI/2;
 sand.position.set(0,0,4);
 scene.add(sand);
 
-// ── DECOR: rocks + driftwood ─────────────────────────────────────────────────
-const rockMat=new THREE.MeshStandardMaterial({color:0x2a2420,roughness:1});
-for(let i=0;i<14;i++){
-  const a=Math.random()*Math.PI*2,r=3+Math.random()*9;
-  const x=Math.sin(a)*r,z=4+Math.cos(a)*r*0.7-2;
-  if(Math.abs(x)<1.4&&z<2&&z>-1)continue; // keep fire pit clear
-  const m=new THREE.Mesh(new THREE.IcosahedronGeometry(.18+Math.random()*.3,0),rockMat);
-  m.position.set(x,.12,z);m.rotation.set(Math.random()*6,Math.random()*6,Math.random()*6);
-  scene.add(m);
+// ── DECOR: theme-driven prop scattering ──────────────────────────────────────
+// Six low-poly archetypes built from primitive geometry only (no external
+// assets), reused across biomes — 'rock'/'crystal' read as boulders, gems,
+// ice or alien pods; 'spike' as trees, stalagmites or mountains; 'pillar' as
+// columns or ruins; 'ring' as portals, coral rings or halos — depending on
+// each biome's tint and placement density.
+const DECOR_BASE_COUNT={rock:14,log:4,crystal:11,spike:10,pillar:6,ring:4};
+function makeDecorMesh(type,mat){
+  switch(type){
+    case 'log': return new THREE.Mesh(new THREE.CylinderGeometry(.14,.18,2.2+Math.random()*1.0,7),mat);
+    case 'crystal': return new THREE.Mesh(new THREE.OctahedronGeometry(.28+Math.random()*.26,0),mat);
+    case 'spike': return new THREE.Mesh(new THREE.ConeGeometry(.2+Math.random()*.2,1.0+Math.random()*1.4,6),mat);
+    case 'pillar': return new THREE.Mesh(new THREE.CylinderGeometry(.16,.22,1.8+Math.random()*1.8,8),mat);
+    case 'ring': return new THREE.Mesh(new THREE.TorusGeometry(.32+Math.random()*.22,.08,8,16),mat);
+    default: return new THREE.Mesh(new THREE.IcosahedronGeometry(.18+Math.random()*.3,0),mat);
+  }
 }
-const woodMat=new THREE.MeshStandardMaterial({color:0x4a3322,roughness:.95});
-[[-4.5,.15,8],[5.2,.12,10.5],[-3,.1,12]].forEach(([x,y,z],i)=>{
-  const m=new THREE.Mesh(new THREE.CylinderGeometry(.14,.18,2.4+i*.3,7),woodMat);
-  m.position.set(x,y,z);m.rotation.z=Math.PI/2+Math.random()*.4;m.rotation.y=Math.random()*6;
-  scene.add(m);
-});
+const decorGroup=new THREE.Group();scene.add(decorGroup);
+let decorMat=null;
+function buildDecor(biome){
+  while(decorGroup.children.length){
+    const m=decorGroup.children.pop();
+    decorGroup.remove(m);m.geometry.dispose();
+  }
+  if(decorMat)decorMat.dispose();
+  decorMat=new THREE.MeshStandardMaterial({color:biome.tint,roughness:.95});
+  const types=(biome.decor&&biome.decor.length)?biome.decor:['rock'];
+  types.forEach(type=>{
+    const n=Math.max(1,Math.round((DECOR_BASE_COUNT[type]||8)*biome.density));
+    const tall=type==='pillar'||type==='spike'||type==='ring';
+    for(let i=0;i<n;i++){
+      const a=Math.random()*Math.PI*2,r=3+Math.random()*10;
+      const x=Math.sin(a)*r,z=4+Math.cos(a)*r*0.7-2;
+      if(Math.abs(x)<1.4&&z<2&&z>-1)continue; // keep fire pit clear
+      const m=makeDecorMesh(type,decorMat);
+      if(type==='log'){
+        m.position.set(x,.15,z);m.rotation.z=Math.PI/2+Math.random()*.4;m.rotation.y=Math.random()*6;
+      }else if(type==='ring'){
+        m.position.set(x,.4+Math.random()*.5,z);m.rotation.x=Math.random()*6;m.rotation.y=Math.random()*6;
+      }else if(tall){
+        m.position.set(x,0,z);m.rotation.y=Math.random()*6;
+      }else{
+        m.position.set(x,.12,z);m.rotation.set(Math.random()*6,Math.random()*6,Math.random()*6);
+      }
+      decorGroup.add(m);
+    }
+  });
+}
 
 // ── CAMPFIRE ─────────────────────────────────────────────────────────────────
 const firePos=new THREE.Vector3(0,0,6);
@@ -598,6 +856,76 @@ function updateGulls(el,dt){
   });
 }
 
+// ── AMBIENT PARTICLES — theme-driven atmosphere ──────────────────────────────
+// A generic looping particle layer (snow, spores, bubbles, ash, fireflies,
+// dust, pollen, leaves, sparks, bioluminescence, stardust, rain) seeded by
+// the active biome, independent of the campfire's own embers/smoke. Particles
+// recycle within a box around the seat so the layer always reads as present,
+// rather than being spawned/disposed per biome switch.
+const AMBIENT_MOTION={
+  snow:{dir:-1,drift:.5},rain:{dir:-1,drift:.05},leaves:{dir:-1,drift:.9},ash:{dir:-1,drift:.6},
+  dust:{dir:-1,drift:.4},pollen:{dir:0,drift:.7},
+  spores:{dir:0,drift:.6},fireflies:{dir:0,drift:.8},bioluminescence:{dir:0,drift:.5},
+  bubbles:{dir:1,drift:.3},stardust:{dir:0,drift:.3},sparks:{dir:1,drift:.5}
+};
+const AMB_MAX=260;
+const ambPos=new Float32Array(AMB_MAX*3),ambVel=new Float32Array(AMB_MAX*3);
+const ambGeo=new THREE.BufferGeometry();const ambAttr=new THREE.BufferAttribute(ambPos,3);ambGeo.setAttribute('position',ambAttr);
+const ambMat=new THREE.PointsMaterial({color:0xffffff,size:.16,transparent:true,opacity:0,depthWrite:false,sizeAttenuation:true,blending:THREE.AdditiveBlending});
+const ambPts=new THREE.Points(ambGeo,ambMat);scene.add(ambPts);
+let ambCount=0,ambMotion={dir:0,drift:.5},ambSpeed=.5,ambSpread=40;
+function spawnAmb(i,fresh){
+  ambPos[i*3]=(Math.random()-.5)*ambSpread;
+  ambPos[i*3+1]=fresh?Math.random()*22:(ambMotion.dir<0?22:ambMotion.dir>0?.2:Math.random()*22);
+  ambPos[i*3+2]=(Math.random()-.5)*ambSpread-6;
+  ambVel[i*3]=(Math.random()-.5)*ambMotion.drift;
+  ambVel[i*3+1]=ambMotion.dir*(.6+Math.random()*.8)*ambSpeed;
+  ambVel[i*3+2]=(Math.random()-.5)*ambMotion.drift;
+}
+function buildAmbientParticles(biome){
+  const p=biome.particle||{count:0};
+  ambCount=Math.min(AMB_MAX,Math.round(p.count||0));
+  ambMotion=AMBIENT_MOTION[p.type]||{dir:0,drift:.5};
+  ambSpeed=p.speed!==undefined?p.speed:.5;
+  ambSpread=p.spread!==undefined?p.spread:40;
+  ambMat.color.set(p.color!==undefined?p.color:0xffffff);
+  ambMat.size=(p.type==='bubbles'||p.type==='fireflies'||p.type==='bioluminescence'||p.type==='stardust')?.1:.16;
+  for(let i=0;i<AMB_MAX;i++){
+    if(i<ambCount)spawnAmb(i,true);else ambPos[i*3+1]=-999;
+  }
+  ambAttr.needsUpdate=true;
+  ambMat.opacity=ambCount>0?.75:0;
+}
+function updateAmbientParticles(dt){
+  if(ambCount<=0)return;
+  for(let i=0;i<ambCount;i++){
+    ambPos[i*3]+=ambVel[i*3]*dt;ambPos[i*3+1]+=ambVel[i*3+1]*dt;ambPos[i*3+2]+=ambVel[i*3+2]*dt;
+    const y=ambPos[i*3+1],x=ambPos[i*3],z=ambPos[i*3+2];
+    const outY=(ambMotion.dir<0&&y<.2)||(ambMotion.dir>0&&y>22);
+    const outXZ=Math.abs(x)>ambSpread*.6||z<-ambSpread-6||z>ambSpread-6;
+    if(outY||outXZ)spawnAmb(i,false);
+  }
+  ambAttr.needsUpdate=true;
+}
+
+// ── APPLY THEME ──────────────────────────────────────────────────────────────
+// Re-skins the already-built scene for a chosen biome: swaps the day/night
+// palette table, toggles the ocean plane and sand's wet/swash line, rebuilds
+// decor and ambient particles, and re-tints the HUD title with the realm's
+// name. Only callable pre-ignite — selection locks once the journey starts,
+// same as the session-length settings.
+function applyTheme(biome){
+  currentBiome=biome;
+  TOD_KEYS=buildTOD(biome);
+  updateTimeOfDay();
+  ocean.visible=!!biome.water;
+  sandU.uWetOn.value=biome.wetGround?1:0;
+  buildDecor(biome);
+  buildAmbientParticles(biome);
+  document.getElementById('hTitle').textContent=biome.name.toUpperCase();
+  if(windNodes)windNodes.lp.frequency.setTargetAtTime(260+biome.windBrightness*760,actx.currentTime,1.5);
+}
+
 // ── STATE MACHINE ───────────────────────────────────────────────────────────
 let phase='prelude'; // prelude | igniting | journey | afterglow
 let chakraInfluence=0;
@@ -669,6 +997,33 @@ function igniteFire(){
 
 document.getElementById('kindle').addEventListener('click',igniteFire);
 document.getElementById('again').addEventListener('click',()=>location.reload());
+
+// ── BIOME PICKER (entry screen) ──────────────────────────────────────────────
+let selectedBiomeId=currentBiome.id;
+function renderBiomeList(cat){
+  const list=document.getElementById('biomeList');
+  list.innerHTML='';
+  BIOMES.filter(b=>b.cat===cat).forEach(b=>{
+    const card=document.createElement('div');
+    card.className='biomeCard'+(b.id===selectedBiomeId?' sel':'');
+    card.textContent=b.name;
+    card.addEventListener('click',()=>{
+      selectedBiomeId=b.id;
+      [...list.children].forEach(c=>c.classList.remove('sel'));
+      card.classList.add('sel');
+      applyTheme(b);
+    });
+    list.appendChild(card);
+  });
+}
+document.querySelectorAll('.biomeTab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.biomeTab').forEach(t=>t.classList.remove('sel'));
+    tab.classList.add('sel');
+    renderBiomeList(tab.dataset.cat);
+  });
+});
+renderBiomeList(document.querySelector('.biomeTab.sel').dataset.cat);
 
 // Settings panel wiring
 document.getElementById('gear').addEventListener('click',()=>document.getElementById('panel').classList.toggle('show'));
@@ -755,7 +1110,7 @@ function scheduleGust(){
 
 function startWind(){
   const src=actx.createBufferSource();src.buffer=makeNoiseBuffer(14);src.loop=true;
-  const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=500;lp.Q.value=.5;
+  const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=260+currentBiome.windBrightness*760;lp.Q.value=.5;
   const g=actx.createGain();g.gain.value=0;g.gain.linearRampToValueAtTime(.05,actx.currentTime+3);
   // Two incommensurate LFOs on the cutoff so gusting never repeats on a
   // single predictable period.
@@ -794,7 +1149,7 @@ function startBreeze(){
 function curChakraFreqNorm(){return (activeCK.freq-396)/(963-396);}
 
 function scheduleWave(){
-  if(!actx)return;
+  if(!actx||!currentBiome.water)return;
   const t=actx.currentTime,dur=waveState.period;
   const src=actx.createBufferSource();src.buffer=makeNoiseBuffer(3);
   const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=420;
@@ -883,8 +1238,32 @@ document.getElementById('snd').addEventListener('click',()=>{
   if(actx&&actx.state==='suspended')actx.resume();
 });
 
-// Enter overlay — first user gesture starts audio (browser autoplay policy)
-document.getElementById('enter').addEventListener('click',()=>{
+// ── VR (WebXR) — optional head-tracked viewing ───────────────────────────────
+// Feature-detected: the button only appears on a device/browser that reports
+// immersive-vr support. Three.js's XR camera takes over orientation from the
+// seated `cam` once a session is active (see the `renderer.xr.isPresenting`
+// check in the animate loop above), so the headset's own head tracking drives
+// looking around instead of the mouse/touch drag controls.
+const vrBtn=document.getElementById('vrBtn');
+if(navigator.xr&&navigator.xr.isSessionSupported){
+  navigator.xr.isSessionSupported('immersive-vr').then(ok=>{if(ok)vrBtn.classList.add('show');}).catch(()=>{});
+}
+vrBtn.addEventListener('click',async()=>{
+  if(renderer.xr.isPresenting)return;
+  try{
+    iA();if(actx.state==='suspended')actx.resume();
+    cam.position.copy(SEAT);
+    const session=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor']});
+    await renderer.xr.setSession(session);
+    session.addEventListener('end',()=>vrBtn.classList.remove('on'));
+    vrBtn.classList.add('on');
+  }catch(err){console.error('WebXR session failed to start',err);}
+});
+
+// Begin — first user gesture starts audio (browser autoplay policy). The
+// chosen biome was already applied live as the user tapped through the
+// picker, so Begin only needs to dismiss the overlay and start sound.
+document.getElementById('beginBtn').addEventListener('click',()=>{
   iA();
   if(actx.state==='suspended')actx.resume();
   document.getElementById('enter').classList.add('out');
@@ -997,7 +1376,6 @@ function updateSmoke(el,dt){
 }
 
 function animate(){
-  requestAnimationFrame(animate);
   const now=performance.now();
   const dt=Math.min(.05,(now-lastT)/1000);
   lastT=now;
@@ -1014,11 +1392,15 @@ function animate(){
   updateSmoke(el,dt);
   updateClouds(dt);
   updateGulls(el,dt);
+  updateAmbientParticles(dt);
 
-  updCam();
+  // Head tracking takes over camera orientation in an active WebXR session;
+  // the manual seated drag-camera only runs outside of VR.
+  if(!renderer.xr.isPresenting)updCam();
   renderer.render(scene,cam);
 }
-animate();
+applyTheme(currentBiome); // initialize decor/particles/ocean for the default selection
+renderer.setAnimationLoop(animate);
 
 }catch(err){
   document.body.innerHTML='<pre style="color:#ffb;background:#200;padding:20px;white-space:pre-wrap;font-family:monospace">'+
