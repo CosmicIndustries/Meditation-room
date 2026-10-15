@@ -1264,7 +1264,11 @@ function spawnSmk(i){
 // cover) just by toggling visibility rather than creating/disposing meshes.
 const CLOUD_N=Math.max(2,Math.round(10*Q.cloudMul));
 const cloudGroups=[];
-const cloudMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.82,fog:true});
+// Lambert, not Basic: clouds used to stay at the exact same flat brightness
+// day or night, lit or shaded, which is the "self-emissive" look the sun and
+// fire alone should justify. Lambert lets them actually darken at night and
+// pick up a bit of real shading from the sun's direction.
+const cloudMat=new THREE.MeshLambertMaterial({color:0xffffff,transparent:true,opacity:.82,fog:true});
 // One shared unit puff geometry, scaled per-instance (including the
 // y-flatten) instead of a uniquely-sized geometry per puff.
 const cloudPuffGeo=new THREE.IcosahedronGeometry(1,0);
@@ -1301,7 +1305,7 @@ function updateClouds(dt){
 }
 
 // ── GULLS — simple low-poly birds on loose circling flight paths ────────────
-const gullMat=new THREE.MeshBasicMaterial({color:0x2a251f});
+const gullMat=new THREE.MeshLambertMaterial({color:0x2a251f});
 // Every gull is identically sized (no randomization), so body/wing geometry
 // is built once and shared by every instance below instead of once per gull.
 const gullBodyGeo=new THREE.ConeGeometry(.08,.5,5);
@@ -1369,12 +1373,22 @@ const AMBIENT_MOTION={
   spores:{dir:0,drift:.6},fireflies:{dir:0,drift:.8},bioluminescence:{dir:0,drift:.5},
   bubbles:{dir:1,drift:.3},stardust:{dir:0,drift:.3},sparks:{dir:1,drift:.5}
 };
+// Particles that are conceptually light-emitting on their own terms — living
+// glow, sparks, embers, starlight — keep additively brightening the scene and
+// stay at full strength regardless of hour, the same exception the campfire
+// and sun get. Everything else (dust, pollen, snow, spores, leaves, bubbles,
+// rain, ash) is just lit motes, not a light source: normal blending instead
+// of additive so they stop brightening whatever's behind them, and their
+// opacity now follows the same day/night curve the sun and sky do, so they
+// dim at night instead of floating there at an unchanging, faintly glowing
+// brightness no matter how dark the scene around them gets.
+const GLOW_PARTICLE_TYPES=new Set(['bioluminescence','fireflies','sparks','stardust','embers']);
 const AMB_MAX=260;
 const ambPos=new Float32Array(AMB_MAX*3),ambVel=new Float32Array(AMB_MAX*3);
 const ambGeo=new THREE.BufferGeometry();const ambAttr=new THREE.BufferAttribute(ambPos,3);ambGeo.setAttribute('position',ambAttr);
 const ambMat=new THREE.PointsMaterial({color:0xffffff,size:.16,transparent:true,opacity:0,depthWrite:false,sizeAttenuation:true,blending:THREE.AdditiveBlending});
 const ambPts=new THREE.Points(ambGeo,ambMat);scene.add(ambPts);
-let ambCount=0,ambMotion={dir:0,drift:.5},ambSpeed=.5,ambSpread=40;
+let ambCount=0,ambMotion={dir:0,drift:.5},ambSpeed=.5,ambSpread=40,ambIsGlow=false,ambBaseOpacity=0;
 function spawnAmb(i,fresh,rng){
   const R=rng||Math.random; // seeded for the initial per-biome layout, true-random on recycle
   ambPos[i*3]=(R()-.5)*ambSpread;
@@ -1392,12 +1406,15 @@ function buildAmbientParticles(biome){
   ambSpread=p.spread!==undefined?p.spread:40;
   ambMat.color.set(p.color!==undefined?p.color:0xffffff);
   ambMat.size=(p.type==='bubbles'||p.type==='fireflies'||p.type==='bioluminescence'||p.type==='stardust')?.1:.16;
+  ambIsGlow=GLOW_PARTICLE_TYPES.has(p.type);
+  ambMat.blending=ambIsGlow?THREE.AdditiveBlending:THREE.NormalBlending;
   const rng=makeRNG(hashSeed(biome.id+':particles')); // same biome -> same initial scatter
   for(let i=0;i<AMB_MAX;i++){
     if(i<ambCount)spawnAmb(i,true,rng);else ambPos[i*3+1]=-999;
   }
   ambAttr.needsUpdate=true;
-  ambMat.opacity=ambCount>0?.75:0;
+  ambBaseOpacity=ambCount>0?.75:0;
+  ambMat.opacity=ambBaseOpacity;
 }
 function updateAmbientParticles(dt){
   if(ambCount<=0)return;
@@ -1989,6 +2006,12 @@ function updateSun(now,el){
   // signal instead of a second model of its own — and stay dim underwater,
   // where there's no clear sky to see them in regardless of the hour.
   starsMat.opacity=(1-THREE.MathUtils.clamp(PAL.sh*6+.3,0,1))*0.85*(currentBiome.submerged?0.1:1);
+  // Non-glow ambient particles (dust, pollen, snow, ...) are lit motes, not
+  // a light source — they should dim at night like anything else the sun
+  // and fire aren't currently lighting, not sit at a flat, faintly glowing
+  // brightness regardless of the hour. Glow types (fireflies, sparks, ...)
+  // are the deliberate exception, same as the campfire itself.
+  if(ambCount>0)ambMat.opacity=ambBaseOpacity*(ambIsGlow?1:(0.35+sunVisibility*0.65));
   cloudMat.color.copy(PAL.sun).lerp(_todB.set(0xffffff),.55);
   // Fog reads as the biome's own murk/haze — deep water's own deep colour
   // when submerged (so depth feels like it surrounds you), the sky's
