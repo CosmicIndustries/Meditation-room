@@ -1268,7 +1268,14 @@ const cloudGroups=[];
 // day or night, lit or shaded, which is the "self-emissive" look the sun and
 // fire alone should justify. Lambert lets them actually darken at night and
 // pick up a bit of real shading from the sun's direction.
-const cloudMat=new THREE.MeshLambertMaterial({color:0xffffff,transparent:true,opacity:.82,fog:true});
+// depthWrite:false matters more here than it would on an opaque material:
+// each puff is a low-poly, facet-edged sphere, several of which overlap per
+// cloud (and between neighbouring clouds). With depth writes on, every pair
+// of overlapping puffs hard-clips at their intersection — a sharp faceted
+// seam where one sphere visibly cuts into another. Without it they alpha-
+// blend over whatever's already drawn instead, so overlapping puffs melt
+// into one soft shape the way an actual cloud's overlapping lobes do.
+const cloudMat=new THREE.MeshLambertMaterial({color:0xffffff,transparent:true,opacity:.82,fog:true,depthWrite:false});
 // One shared unit puff geometry, scaled per-instance (including the
 // y-flatten) instead of a uniquely-sized geometry per puff.
 const cloudPuffGeo=new THREE.IcosahedronGeometry(1,0);
