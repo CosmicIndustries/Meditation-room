@@ -568,6 +568,16 @@ const BIOMES=[
    sky:{h:0.14,s:0.35}, ground:{h:0.21,s:0.3,l:0.72}, water:null,
    wetGround:false, decor:['crystal','spike','rock'], tint:0xd6e89a, density:0.5,
    particle:{type:'dust',color:0xeaf6c8,count:100,speed:0.4,spread:60}, windBrightness:0.85},
+  // 43rd realm, dev-only: cat:'dev' matches none of the four picker tabs
+  // (terrestrial/aquatic/air/misc), so renderBiomeList() never lists it —
+  // reachable only via the #dev URL hash (see the picker wiring below).
+  // Neutral grayscale palette and every one of the 8 decor archetypes at
+  // once, for working on shared rendering (ground, lighting, particles,
+  // fog) without any one biome's colour or theme getting in the way.
+  {id:'dev-sandbox', name:'Dev Sandbox', cat:'dev',
+   sky:{h:0,s:0}, ground:{h:0,s:0,l:0.5}, water:null,
+   wetGround:false, decor:['rock','log','crystal','spike','pillar','ring','bush','quadruped'], tint:0x888888, density:1.0,
+   particle:{type:'dust',color:0xcccccc,count:80,speed:0.3,spread:45}, windBrightness:0.5},
 ];
 
 function hslHex(h,s,l){
@@ -1649,6 +1659,17 @@ function renderBiomeList(cat){
     });
     list.appendChild(card);
   });
+}
+// Dev Sandbox tab: only inserted when the page was opened with #dev in the
+// URL, so the 43rd realm stays invisible (and the tab row stays four wide)
+// for every normal visitor — this is for working on the app itself, not a
+// feature to discover by clicking around.
+if(location.hash==='#dev'){
+  const devTab=document.createElement('div');
+  devTab.className='biomeTab';
+  devTab.dataset.cat='dev';
+  devTab.textContent='Dev';
+  document.getElementById('biomeTabs').appendChild(devTab);
 }
 document.querySelectorAll('.biomeTab').forEach(tab=>{
   tab.addEventListener('click',()=>{
