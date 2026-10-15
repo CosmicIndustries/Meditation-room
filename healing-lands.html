@@ -1575,11 +1575,16 @@ const AMBIENT_MOTION={
 // brightness no matter how dark the scene around them gets.
 const GLOW_PARTICLE_TYPES=new Set(['bioluminescence','fireflies','sparks','stardust','embers']);
 const AMB_MAX=260;
-const ambPos=new Float32Array(AMB_MAX*3),ambVel=new Float32Array(AMB_MAX*3);
-const ambGeo=new THREE.BufferGeometry();const ambAttr=new THREE.BufferAttribute(ambPos,3);ambGeo.setAttribute('position',ambAttr);
+// ambPos is the pure physics base (straight-line drift only); ambDisplay is
+// what's actually uploaded to the GPU each frame, base plus a per-particle
+// sinusoidal sway (see updateAmbientParticles) — kept separate so the sway
+// oscillates cleanly instead of randomly accumulating into the base drift.
+const ambPos=new Float32Array(AMB_MAX*3),ambVel=new Float32Array(AMB_MAX*3),ambPhase=new Float32Array(AMB_MAX);
+const ambDisplay=new Float32Array(AMB_MAX*3);
+const ambGeo=new THREE.BufferGeometry();const ambAttr=new THREE.BufferAttribute(ambDisplay,3);ambGeo.setAttribute('position',ambAttr);
 const ambMat=new THREE.PointsMaterial({color:0xffffff,size:.16,transparent:true,opacity:0,depthWrite:false,sizeAttenuation:true,blending:THREE.AdditiveBlending});
 const ambPts=new THREE.Points(ambGeo,ambMat);scene.add(ambPts);
-let ambCount=0,ambMotion={dir:0,drift:.5},ambSpeed=.5,ambSpread=40,ambIsGlow=false,ambBaseOpacity=0;
+let ambCount=0,ambMotion={dir:0,drift:.5},ambSpeed=.5,ambSpread=40,ambIsGlow=false,ambBaseOpacity=0,ambSway=0;
 function spawnAmb(i,fresh,rng){
   const R=rng||Math.random; // seeded for the initial per-biome layout, true-random on recycle
   ambPos[i*3]=(R()-.5)*ambSpread;
@@ -1588,6 +1593,7 @@ function spawnAmb(i,fresh,rng){
   ambVel[i*3]=(R()-.5)*ambMotion.drift;
   ambVel[i*3+1]=ambMotion.dir*(.6+R()*.8)*ambSpeed;
   ambVel[i*3+2]=(R()-.5)*ambMotion.drift;
+  ambPhase[i]=R()*Math.PI*2;
 }
 function buildAmbientParticles(biome){
   const p=biome.particle||{count:0};
@@ -1595,19 +1601,26 @@ function buildAmbientParticles(biome){
   ambMotion=AMBIENT_MOTION[p.type]||{dir:0,drift:.5};
   ambSpeed=p.speed!==undefined?p.speed:.5;
   ambSpread=p.spread!==undefined?p.spread:40;
+  // A gentle sinusoidal sway layered on top of the base drift (see
+  // updateAmbientParticles) scaled off each type's own existing drift
+  // figure, so light, flighty things (leaves, fireflies, pollen) swirl
+  // noticeably and heavy/fast ones (rain) barely waver — one atmosphere
+  // knob reused instead of a new per-type field.
+  ambSway=ambMotion.drift*.65;
   ambMat.color.set(p.color!==undefined?p.color:0xffffff);
-  ambMat.size=(p.type==='bubbles'||p.type==='fireflies'||p.type==='bioluminescence'||p.type==='stardust')?.1:.16;
+  ambMat.size=(p.type==='bubbles'||p.type==='fireflies'||p.type==='bioluminescence'||p.type==='stardust')?.13:.19;
   ambIsGlow=GLOW_PARTICLE_TYPES.has(p.type);
   ambMat.blending=ambIsGlow?THREE.AdditiveBlending:THREE.NormalBlending;
   const rng=makeRNG(hashSeed(biome.id+':particles')); // same biome -> same initial scatter
   for(let i=0;i<AMB_MAX;i++){
     if(i<ambCount)spawnAmb(i,true,rng);else ambPos[i*3+1]=-999;
   }
+  ambDisplay.set(ambPos);
   ambAttr.needsUpdate=true;
-  ambBaseOpacity=ambCount>0?.75:0;
+  ambBaseOpacity=ambCount>0?.85:0;
   ambMat.opacity=ambBaseOpacity;
 }
-function updateAmbientParticles(dt){
+function updateAmbientParticles(el,dt){
   if(ambCount<=0)return;
   for(let i=0;i<ambCount;i++){
     ambPos[i*3]+=ambVel[i*3]*dt;ambPos[i*3+1]+=ambVel[i*3+1]*dt;ambPos[i*3+2]+=ambVel[i*3+2]*dt;
@@ -1615,6 +1628,10 @@ function updateAmbientParticles(dt){
     const outY=(ambMotion.dir<0&&y<.2)||(ambMotion.dir>0&&y>22);
     const outXZ=Math.abs(x)>ambSpread*.6||z<-ambSpread-6||z>ambSpread-6;
     if(outY||outXZ)spawnAmb(i,false);
+    const ph=ambPhase[i];
+    ambDisplay[i*3]=ambPos[i*3]+Math.sin(el*.6+ph)*ambSway;
+    ambDisplay[i*3+1]=ambPos[i*3+1];
+    ambDisplay[i*3+2]=ambPos[i*3+2]+Math.cos(el*.5+ph)*ambSway;
   }
   ambAttr.needsUpdate=true;
 }
@@ -2391,7 +2408,7 @@ function animate(){
   updateClouds(dt);
   updateGulls(el,dt);
   updateFauna(el);
-  updateAmbientParticles(dt);
+  updateAmbientParticles(el,dt);
   updateAudioListener();
 
   // Head tracking takes over camera orientation in an active WebXR session;
