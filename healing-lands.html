@@ -871,7 +871,9 @@ const sandU={
   uTime:{value:0},
   uWetOn:{value:1},
   uShoreOn:{value:1},
-  uHeightAmp:{value:0.1}
+  uHeightAmp:{value:0.1},
+  uGrainScale:{value:1},
+  uGrainContrast:{value:1}
 };
 // A genuine SVG-generated "splat" texture — feTurbulence is SVG's own
 // procedural noise primitive, rendered here at a high resolution (scaled
@@ -959,11 +961,18 @@ sandMat.onBeforeCompile=(shader)=>{
       transformed.z=groundHeight(position.xy);`);
   shader.fragmentShader=noiseLib+`
     uniform vec3 uBase;uniform vec3 uWet;uniform vec3 uGlow;uniform float uFireI;uniform float uTime;uniform float uWetOn;uniform float uShoreOn;
+    uniform float uGrainScale;uniform float uGrainContrast;
     uniform sampler2D uGrain;
   `+shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
     {
-      float grain=noise(vXY*6.0)*0.06+noise(vXY*22.0)*0.03;
-      float splat=texture2D(uGrain,vXY*0.35).r-0.5; // mip-mapped bitmap detail, antialiases at distance
+      // uGrainScale/uGrainContrast (set per biome in applyTheme, from its
+      // own ground saturation/lightness/wetness) give each realm's ground
+      // its own surface character — fine and smooth for snow/ice/mist,
+      // coarse and high-contrast for bare rock/desert/canyon — instead of
+      // literally the same texture everywhere with only the base colour
+      // changed.
+      float grain=(noise(vXY*6.0*uGrainScale)*0.06+noise(vXY*22.0*uGrainScale)*0.03)*uGrainContrast;
+      float splat=(texture2D(uGrain,vXY*0.35*uGrainScale).r-0.5)*uGrainContrast;
       vec3 col=uBase+grain+splat*0.05;
       float wetT=smoothstep(2.0,10.0,vXY.y);
 
@@ -1655,6 +1664,19 @@ function applyTheme(biome){
   else if(biome.water)heightAmp=0.12; // shorelines read flatter
   else if(biome.wetGround)heightAmp=0.15;
   sandU.uHeightAmp.value=heightAmp;
+  // Ground surface character, derived from each biome's own already-
+  // authored ground colour rather than a per-biome field: higher
+  // saturation reads as more textured rock/sand/canyon in this palette's
+  // conventions, so it gets a coarser, higher-contrast grain; pale,
+  // washed-out ground (snow, ice, mist, bone-white sand) smooths back
+  // out, and wet ground is always smoothed further (compacted sand/mud).
+  // Every biome ends up with its own surface instead of literally the
+  // same texture under a different base colour.
+  let grainScale=0.7+biome.ground.s*1.3,grainContrast=0.6+biome.ground.s*1.0;
+  if(biome.ground.l>0.7){grainScale*=0.6;grainContrast*=0.6;}
+  if(biome.wetGround)grainContrast*=0.7;
+  sandU.uGrainScale.value=grainScale;
+  sandU.uGrainContrast.value=grainContrast;
   // The campfire sits at a fixed (x,z) but the ground under it now has
   // real relief too — without this it would float or sink relative to
   // whatever height that particular spot's noise happens to land on.
