@@ -464,12 +464,19 @@ const BIOMES=[
    wetGround:true, decor:['frond','log','rock','bush'], tint:0x3a4028, density:1.1,
    particle:{type:'spores',color:0x9ab07a,count:100,speed:0.25,spread:40}, windBrightness:0.3},
   {id:'mangrove-shallows', name:'Mangrove Shallows', cat:'aquatic',
-   sky:{h:0.45,s:0.3}, ground:{h:0.32,s:0.4,l:0.28}, water:{h:0.42,s:0.35},
+   // Real mangrove swamp water runs yellow to dark tea-brown — tannins
+   // from decaying leaf litter, not clear or algae-green — over dark
+   // brown-grey mud; the canopy above keeps its green in tint/decor.
+   sky:{h:0.45,s:0.3}, ground:{h:0.09,s:0.3,l:0.22}, water:{h:0.1,s:0.5},
    wetGround:true, decor:['frond','log','rock','bush'], tint:0x2f4a3a, density:1.3,
    particle:{type:'fireflies',color:0xdfff9a,count:90,speed:0.2,spread:35}, windBrightness:0.35},
   {id:'kelp-forest', name:'Kelp Forest', cat:'aquatic', submerged:true,
-   sky:{h:0.62,s:0.2}, ground:{h:0.4,s:0.35,l:0.2}, water:{h:0.48,s:0.5},
-   wetGround:false, decor:['frond','rock','crystal'], tint:0x2a6a4a, density:1.4,
+   // Real giant-kelp canopy reads golden-brown to olive in sunlight, not
+   // green — it's a brown alga, not a plant — against blue-green water,
+   // so ground/tint lean warm gold-olive rather than the leafy green a
+   // land forest would use.
+   sky:{h:0.62,s:0.2}, ground:{h:0.13,s:0.45,l:0.22}, water:{h:0.48,s:0.5},
+   wetGround:false, decor:['frond','rock','crystal'], tint:0x8a7a2a, density:1.4,
    particle:{type:'bubbles',color:0xaef0e0,count:140,speed:0.35,spread:45}, windBrightness:0.2},
   {id:'hydrothermal-vent', name:'Hydrothermal Vent', cat:'aquatic', submerged:true,
    sky:{h:0.68,s:0.15}, ground:{h:0.05,s:0.3,l:0.15}, water:{h:0.6,s:0.25},
@@ -1318,6 +1325,7 @@ function makeDecorMesh(type,mat,rng){
 const decorGroup=new THREE.Group();scene.add(decorGroup);
 const faunaGroups=[];
 let decorMat=null;
+let coralMats=[];
 function buildDecor(biome){
   // Geometry is shared (DECOR_GEO, built once above) across every instance
   // and every biome now, so clearing old decor only removes the meshes —
@@ -1328,10 +1336,24 @@ function buildDecor(biome){
   }
   faunaGroups.length=0;
   if(decorMat)decorMat.dispose();
+  coralMats.forEach(m=>m.dispose());coralMats.length=0;
   // map x color: the shared grayscale decorSplat texture supplies fine
   // surface detail, biome.tint supplies the colour — one texture asset,
   // every biome's own look, instead of a colour-baked texture per biome.
   decorMat=new THREE.MeshStandardMaterial({color:biome.tint,map:decorSplat,roughness:.55});
+  // Real coral/reef structures are never one flat hue the way a single
+  // shared decorMat would render them — reef surveys consistently describe
+  // reefs as a mix of pinks, oranges, purples and yellows even within one
+  // patch, not a monochrome wash. A handful of hue/lightness-jittered
+  // clones around the biome's own tint gets that variety cheaply (coral
+  // instance counts are low) without needing a hand-authored palette per
+  // biome — Abyssal Deep's corals jitter around its dark blue tint while
+  // Coral Reef's jitter around its salmon one.
+  for(let i=0;i<6;i++){
+    const c=decorMat.clone();
+    c.color.offsetHSL((i/6-0.4)*0.22,0,(i%3-1)*0.1);
+    coralMats.push(c);
+  }
   const types=(biome.decor&&biome.decor.length)?biome.decor:['rock'];
   const rng=makeRNG(hashSeed(biome.id)); // same biome -> same layout, every time
   types.forEach(type=>{
@@ -1352,7 +1374,8 @@ function buildDecor(biome){
       const a=rng()*Math.PI*2,r=3+rng()*rSpread;
       const x=Math.sin(a)*r,z=4+Math.cos(a)*r*0.7-2;
       if(Math.abs(x)<1.4&&z<2&&z>-1)continue; // keep fire pit clear
-      const m=makeDecorMesh(type,decorMat,rng);
+      const instMat=type==='coral'?coralMats[Math.floor(rng()*coralMats.length)]:decorMat;
+      const m=makeDecorMesh(type,instMat,rng);
       m.traverse(c=>{if(c.isMesh){c.castShadow=true;c.receiveShadow=true;}});
       // Ground height now actually varies (see uHeightAmp/terrainHeight), so
       // props need to sit on it rather than at a fixed y=0 — otherwise a
