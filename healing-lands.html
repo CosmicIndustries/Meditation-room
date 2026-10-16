@@ -1,0 +1,2463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Healing Lands</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cinzel+Decorative&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;background:#140b08;font-family:'Cinzel',Georgia,serif}
+#kindle,#again,#snd,#gear,#panel .opt,.biomeTab,.biomeCard,#beginBtn,#vrBtn,#bioBtn,#bioPanel .bioBtn{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#hud{position:fixed;top:0;left:0;right:0;padding:18px 16px 0;text-align:center;pointer-events:none;z-index:10}
+#hTitle{font-family:'Cinzel Decorative',serif;font-size:clamp(12px,2.1vw,24px);letter-spacing:5px;color:#ffe3c2;text-transform:uppercase;text-shadow:0 0 60px currentColor,0 0 22px rgba(255,150,70,.8);transition:color .9s}
+#hSub{font-size:clamp(8px,1.15vw,12px);color:rgba(255,220,190,.55);margin-top:8px;letter-spacing:2.2px;transition:color .8s}
+#hStage{font-size:8px;color:rgba(255,200,150,.32);margin-top:7px;letter-spacing:2px}
+
+#dots{position:fixed;bottom:76px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:10}
+.dot{width:9px;height:9px;border-radius:50%;border:1.5px solid rgba(255,255,255,.3);background:rgba(255,255,255,.05);transition:all .6s}
+.dot.done{background:currentColor;border-color:currentColor;box-shadow:0 0 10px currentColor}
+.dot.now{border-color:#fff;transform:scale(1.35);box-shadow:0 0 14px currentColor}
+
+#kindle{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:10;
+  padding:11px 26px;border-radius:30px;background:rgba(40,16,6,.55);border:1px solid rgba(255,160,90,.4);
+  color:#ffd9ad;font-family:'Cinzel',serif;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;
+  cursor:pointer;transition:all .35s;user-select:none}
+#kindle:hover{border-color:rgba(255,190,110,.9);background:rgba(60,24,8,.7);transform:translateX(-50%) scale(1.05)}
+#kindle.hidden{display:none}
+
+#again{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:10;
+  padding:9px 22px;border-radius:30px;background:rgba(10,10,10,.5);border:1px solid rgba(255,255,255,.25);
+  color:rgba(255,230,210,.75);font-family:'Cinzel',serif;font-size:10px;letter-spacing:2.2px;text-transform:uppercase;
+  cursor:pointer;transition:all .3s;display:none;user-select:none}
+#again.show{display:block}
+#again:hover{border-color:rgba(255,255,255,.6)}
+
+#snd{position:fixed;top:15px;right:15px;z-index:10;width:40px;height:40px;border-radius:50%;background:rgba(20,8,4,.55);border:1px solid rgba(255,190,130,.25);color:rgba(255,210,170,.45);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;user-select:none}
+#snd:hover,#snd.on{border-color:rgba(255,160,70,.7);color:rgba(255,200,140,.95)}
+
+#gear{position:fixed;top:15px;left:15px;z-index:10;width:40px;height:40px;border-radius:50%;background:rgba(20,8,4,.55);border:1px solid rgba(255,190,130,.25);color:rgba(255,210,170,.5);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;user-select:none}
+#gear:hover{border-color:rgba(255,160,70,.7);color:rgba(255,200,140,.95)}
+
+#panel{position:fixed;top:56px;left:15px;z-index:10;width:220px;padding:14px;border-radius:10px;
+  background:rgba(14,7,4,.82);border:1px solid rgba(255,190,130,.25);backdrop-filter:blur(4px);
+  display:none;flex-direction:column;gap:10px;font-size:9px;letter-spacing:1.5px;color:rgba(255,220,195,.8);
+  text-transform:uppercase}
+#panel.show{display:flex}
+#panel.locked{opacity:.4;pointer-events:none}
+#panel .row{display:flex;flex-direction:column;gap:5px}
+#panel .opts{display:flex;gap:5px;flex-wrap:wrap}
+#panel .opt{flex:1;min-width:38px;text-align:center;padding:5px 2px;border-radius:5px;border:1px solid rgba(255,255,255,.18);cursor:pointer;transition:all .25s}
+#panel .opt.sel{background:rgba(120,60,20,.65);border-color:rgba(255,190,110,.85);color:#fff}
+#panel .opt:hover{border-color:rgba(255,190,110,.6)}
+#panel .hint{font-size:7.5px;color:rgba(255,220,195,.4);letter-spacing:1px;line-height:1.5;text-transform:none}
+#zipIn{flex:1;min-width:70px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.18);border-radius:5px;color:#fff;padding:5px 8px;font-size:9px;font-family:'Cinzel',serif}
+#zipIn::placeholder{color:rgba(255,220,195,.35)}
+#useWeather{flex:0 0 auto;padding:5px 10px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+#enter{position:fixed;inset:0;background:#140b08;z-index:100;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:rgba(255,190,130,.75);font-size:11px;letter-spacing:4px;text-transform:uppercase;transition:opacity 1.3s;font-family:'Cinzel Decorative',serif;text-align:center;padding:16px;overflow:hidden}
+#enter .g{font-size:26px;animation:gp 2.6s ease-in-out infinite}
+@keyframes gp{0%,100%{opacity:.3;transform:scale(.9)}50%{opacity:.85;transform:scale(1.08)}}
+#enter small{font-size:8px;letter-spacing:2px;color:rgba(255,220,195,.4);font-family:'Cinzel',serif}
+#enter.out{opacity:0;pointer-events:none}
+#enterTitle{font-size:clamp(16px,3.4vw,26px);letter-spacing:5px}
+#biomeTabs{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.biomeTab{padding:6px 13px;border-radius:20px;border:1px solid rgba(255,190,130,.3);font-size:9px;letter-spacing:1.5px;cursor:pointer;transition:all .25s;background:rgba(255,255,255,.03)}
+.biomeTab.sel{background:rgba(120,60,20,.6);border-color:rgba(255,190,110,.9);color:#fff}
+.biomeTab:hover{border-color:rgba(255,190,110,.6)}
+#biomeList{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:7px;max-width:680px;width:100%;max-height:30vh;overflow-y:auto;padding:10px 4px;margin:2px 0}
+.biomeCard{padding:9px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.15);font-size:9px;letter-spacing:.8px;cursor:pointer;transition:all .2s;background:rgba(255,255,255,.02);text-transform:none;line-height:1.3}
+.biomeCard.sel{border-color:rgba(255,190,110,.95);background:rgba(120,60,20,.5);color:#fff}
+.biomeCard:hover{border-color:rgba(255,190,110,.55)}
+#beginBtn{margin-top:4px;padding:11px 30px;border-radius:30px;background:rgba(40,16,6,.55);border:1px solid rgba(255,160,90,.4);color:#ffd9ad;font-size:11px;letter-spacing:3px;cursor:pointer;transition:all .3s}
+#beginBtn:hover{border-color:rgba(255,190,110,.9);background:rgba(60,24,8,.7);transform:scale(1.04)}
+
+#vrBtn{position:fixed;bottom:24px;right:15px;z-index:10;padding:9px 16px;border-radius:24px;background:rgba(20,8,4,.55);border:1px solid rgba(255,190,130,.35);color:rgba(255,210,170,.8);font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .3s;display:none;user-select:none}
+#vrBtn.show{display:block}
+#vrBtn:hover{border-color:rgba(255,160,70,.8);color:#fff}
+
+#bioBtn{position:fixed;top:15px;right:63px;z-index:10;width:40px;height:40px;border-radius:50%;background:rgba(20,8,4,.55);border:1px solid rgba(255,190,130,.25);color:rgba(255,210,170,.45);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;user-select:none}
+#bioBtn:hover,#bioBtn.on{border-color:rgba(255,160,70,.7);color:rgba(255,200,140,.95)}
+#bioPanel{position:fixed;top:56px;right:15px;z-index:10;width:240px;padding:14px;border-radius:10px;
+  background:rgba(14,7,4,.88);border:1px solid rgba(255,190,130,.25);backdrop-filter:blur(4px);
+  display:none;flex-direction:column;gap:11px;font-size:9px;letter-spacing:1px;color:rgba(255,220,195,.8)}
+#bioPanel.show{display:flex}
+#bioPanel h4{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,200,150,.9);margin:0}
+#bioPanel .bioRow{display:flex;flex-direction:column;gap:4px;padding-bottom:9px;border-bottom:1px solid rgba(255,255,255,.08)}
+#bioPanel .bioRow:last-of-type{border-bottom:none;padding-bottom:0}
+#bioPanel .bioLabel{display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:1.3px}
+#bioPanel .bioStatus{font-size:8px;color:rgba(255,220,195,.45);line-height:1.4;text-transform:none}
+#bioPanel .bioVal{font-size:11px;color:#ffd9ad;font-weight:600}
+#bioPanel .bioBtn{align-self:flex-start;padding:5px 11px;border-radius:14px;border:1px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.04);color:rgba(255,230,210,.8);cursor:pointer;transition:all .25s;text-transform:uppercase;letter-spacing:1px}
+#bioPanel .bioBtn:hover{border-color:rgba(255,190,110,.7)}
+#bioPanel .bioBtn.active{background:rgba(120,60,20,.6);border-color:rgba(255,190,110,.9);color:#fff}
+#bioPanel .hint{font-size:7.5px;color:rgba(255,220,195,.35);line-height:1.5;text-transform:none}
+
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse at 50% 62%,transparent 38%,rgba(10,4,2,.78) 100%);}
+#grain{position:fixed;inset:0;pointer-events:none;z-index:3;opacity:.03;mix-blend-mode:screen}
+</style>
+</head>
+<body>
+<div id="vignette"></div>
+<canvas id="grain"></canvas>
+<div id="enter">
+  <div class="g">&#9734;</div>
+  <div id="enterTitle">Healing Lands</div>
+  <small>Choose where to sit, then kindle the fire</small>
+  <div id="biomeTabs">
+    <div class="biomeTab" data-cat="terrestrial">Terrestrial</div>
+    <div class="biomeTab sel" data-cat="aquatic">Aquatic</div>
+    <div class="biomeTab" data-cat="air">Air &amp; Fantasy</div>
+    <div class="biomeTab" data-cat="misc">Other Realms</div>
+  </div>
+  <div id="biomeList"></div>
+  <div id="beginBtn">Begin &#9734;</div>
+</div>
+
+<div id="hud">
+  <div id="hTitle">Healing Lands</div>
+  <div id="hSub">Watch, and breathe. When you are ready, kindle the fire.</div>
+  <div id="hStage"></div>
+</div>
+<div id="dots"></div>
+<div id="kindle">&#9737; Kindle the Fire</div>
+<div id="again">Begin Again</div>
+<div id="gear" title="Settings">&#9881;</div>
+<div id="snd" class="on" title="Mute / unmute">&#9834;</div>
+<div id="vrBtn" title="Enter VR">&#9729; Enter VR</div>
+<div id="bioBtn" title="Biometric input (experimental)">&#9825;</div>
+<div id="bioPanel">
+  <h4>Next-gen input (experimental)</h4>
+  <div class="bioRow">
+    <div class="bioLabel"><span>Heart rate</span><span class="bioVal" id="hrVal">—</span></div>
+    <div class="bioStatus" id="hrStatus">Standard Bluetooth heart-rate monitors (chest straps, rings, watches).</div>
+    <div class="bioBtn" id="hrBtn">Connect</div>
+  </div>
+  <div class="bioRow">
+    <div class="bioLabel"><span>Pulse oximeter</span><span class="bioVal" id="spo2Val">—</span></div>
+    <div class="bioStatus" id="spo2Status">Standard Bluetooth SpO&#8322; pulse oximeters.</div>
+    <div class="bioBtn" id="spo2Btn">Connect</div>
+  </div>
+  <div class="bioRow">
+    <div class="bioLabel"><span>BCI / EEG</span><span class="bioVal" id="bciVal">—</span></div>
+    <div class="bioStatus" id="bciStatus">No universal Bluetooth BCI standard exists yet — this is a wiring point for a vendor SDK (Muse, Emotiv, OpenBCI). Demo feeds a simulated signal instead.</div>
+    <div class="bioBtn" id="bciBtn">Simulate</div>
+  </div>
+  <div class="bioRow">
+    <div class="bioLabel"><span>Haptics</span><span class="bioVal" id="hapticVal">—</span></div>
+    <div class="bioStatus" id="hapticStatus">Gamepad rumble, or phone vibration.</div>
+    <div class="bioBtn" id="hapticBtn">Test pulse</div>
+  </div>
+  <div class="hint">When connected, your heart rate subtly paces the fire's flicker, and haptics tick once per chakra stage.</div>
+</div>
+<div id="panel">
+  <div class="row">Journey length<div class="opts" data-k="minutes">
+    <div class="opt" data-v="10">10m</div><div class="opt sel" data-v="15">15m</div>
+    <div class="opt" data-v="20">20m</div><div class="opt" data-v="30">30m</div>
+  </div></div>
+  <div class="row">Chakra steps<div class="opts" data-k="steps">
+    <div class="opt" data-v="4">4</div><div class="opt sel" data-v="5">5</div><div class="opt" data-v="6">6</div>
+  </div></div>
+  <div class="row">Direction<div class="opts" data-k="dir">
+    <div class="opt sel" data-v="asc">Rising &#8593;</div><div class="opt" data-v="desc">Grounding &#8595;</div>
+  </div></div>
+  <div class="row">Sky<div class="opts">
+    <label for="zipIn" class="sr-only">Zip code for local cloud cover</label>
+    <input id="zipIn" type="text" inputmode="numeric" maxlength="5" placeholder="Zip (optional)">
+    <div class="opt" id="useWeather">Use</div>
+  </div></div>
+  <div class="hint" id="weatherStatus"></div>
+  <div class="hint">Rising moves Root &#8594; Crown — more energising.<br>Settings lock once the fire is lit.</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+try{
+
+// ── CHAKRA DATA (shared system with Sacred Chamber) ─────────────────────────
+const CK=[
+  {name:'Root',        sk:'Muladhara',   hex:0xFF1111,css:'#FF3333',freq:396,mantra:'LAM',el:'Earth'},
+  {name:'Sacral',      sk:'Svadhisthana',hex:0xFF7700,css:'#FF8822',freq:417,mantra:'VAM',el:'Water'},
+  {name:'Solar Plexus',sk:'Manipura',    hex:0xFFEE00,css:'#FFEE33',freq:528,mantra:'RAM',el:'Fire'},
+  {name:'Heart',       sk:'Anahata',     hex:0x00CC44,css:'#22DD66',freq:639,mantra:'YAM',el:'Air'},
+  {name:'Throat',      sk:'Vishuddha',   hex:0x0088FF,css:'#2299FF',freq:741,mantra:'HAM',el:'Sound'},
+  {name:'Third Eye',   sk:'Ajna',        hex:0x3311EE,css:'#5522FF',freq:852,mantra:'AUM',el:'Light'},
+  {name:'Crown',       sk:'Sahasrara',   hex:0xAA00FF,css:'#BB22FF',freq:963,mantra:'OM', el:'Consciousness'},
+];
+const ISO_HZ=[2,6,8,10,12,40,40];
+
+const isMobile=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)||window.innerWidth<900;
+
+// ── ADAPTIVE QUALITY ─────────────────────────────────────────────────────────
+// Device strings lie (or don't exist) — a UA sniff or navigator.deviceMemory
+// is only ever a starting guess. The real signal is measured frame time, so
+// a tier is picked here from cheap heuristics, then watched live in the
+// animate loop (see degradeQuality below) and stepped DOWN if the frame
+// budget isn't actually being met — fog, culling, entity counts, shadow/
+// post-process cost and resolution all scale off the same tier, so a potato
+// device sheds cost and a strong one keeps the full N64-plus-plus look.
+function detectGPURenderer(){
+  try{
+    const cnv=document.createElement('canvas');
+    const gl=cnv.getContext('webgl')||cnv.getContext('experimental-webgl');
+    const dbg=gl&&gl.getExtension('WEBGL_debug_renderer_info');
+    return dbg?String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)):'';
+  }catch(e){return '';}
+}
+const gpuRenderer=detectGPURenderer();
+const isSoftwareRenderer=/swiftshader|llvmpipe|software|microsoft basic render|angle \(.*software/i.test(gpuRenderer);
+const lowMemory=(navigator.deviceMemory||4)<=2;
+const fewCores=(navigator.hardwareConcurrency||4)<=2;
+
+const QUALITY=[ // 0: potato  1: medium  2: high
+  {shadows:false,shadowSize:512, composite:false,pixelRatioCap:1.0,antialias:false,decorMul:.4, particleMul:.3,cloudMul:.5, faunaMul:0,  gullMul:.5,oceanSeg:[26,32], sandSeg:20,embMul:.4,smkMul:.4},
+  {shadows:true, shadowSize:512, composite:true, pixelRatioCap:1.5,antialias:false,decorMul:.7, particleMul:.6,cloudMul:.7, faunaMul:.6, gullMul:.75,oceanSeg:[60,70], sandSeg:40,embMul:.7,smkMul:.7},
+  {shadows:true, shadowSize:1024,composite:true, pixelRatioCap:2.0,antialias:true, decorMul:1,  particleMul:1, cloudMul:1,  faunaMul:1,  gullMul:1,  oceanSeg:[100,130],sandSeg:70,embMul:1, smkMul:1},
+];
+let qTier=2;
+if(isMobile||lowMemory||fewCores)qTier=1;
+if(isSoftwareRenderer&&(isMobile||lowMemory||fewCores))qTier=0;
+let Q=QUALITY[qTier];
+const PR=Math.min(devicePixelRatio,Q.pixelRatioCap);
+
+function complementOf(hex,sMul,lAdd){
+  const c=new THREE.Color(hex),h={};c.getHSL(h);
+  const o=new THREE.Color();o.setHSL((h.h+.5)%1,Math.min(1,h.s*(sMul||.82)),Math.min(.82,h.l+(lAdd!==undefined?lAdd:.1)));
+  return o;
+}
+
+// ── DETERMINISTIC WORLD-GEN ──────────────────────────────────────────────────
+// Scene LAYOUT (decor placement, prop sizes, cloud/gull field setup) is
+// seeded so a given biome renders the same arrangement every time it's
+// chosen — reloading or re-picking "Pine Forest" always gives you the same
+// pine forest, rather than a new random jumble. Ongoing ANIMATION (flame
+// flicker, ember/smoke spawn timing, wind/wave/crackle audio texture) stays
+// on Math.random() on purpose: that randomness is the desired behaviour —
+// a fire that flickered identically every session would read as fake.
+// mulberry32, a tiny public-domain 32-bit PRNG (no Math.random involved).
+function makeRNG(seed){
+  let a=seed>>>0;
+  return function(){
+    a|=0;a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function hashSeed(str){
+  let h=1779033703^str.length;
+  for(let i=0;i<str.length;i++){
+    h=Math.imul(h^str.charCodeAt(i),3432918353);
+    h=h<<13|h>>>19;
+  }
+  return (h^h>>>16)>>>0;
+}
+const worldRng=makeRNG(hashSeed('healing-lands-world')); // one-time scenery shared by every biome
+
+// A direct JS port of the ground shader's own hash/noise/groundHeight (see
+// sandMat.onBeforeCompile below) — kept byte-for-byte equivalent so decor
+// and the campfire can sample the exact same terrain height the GPU is
+// actually displacing the ground by, instead of sitting at a fixed y=0
+// while hills rise and fall underneath them.
+function groundHash(x,y){const s=Math.sin(x*27.1+y*61.7)*43758.5453;return s-Math.floor(s);}
+function groundNoise(x,y){
+  const ix=Math.floor(x),iy=Math.floor(y);
+  let fx=x-ix,fy=y-iy;
+  fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);
+  const a=groundHash(ix,iy),b=groundHash(ix+1,iy),c=groundHash(ix,iy+1),d=groundHash(ix+1,iy+1);
+  return (a+(b-a)*fx)+((c+(d-c)*fx)-(a+(b-a)*fx))*fy;
+}
+function smoothstepJS(lo,hi,x){const t=Math.min(Math.max((x-lo)/(hi-lo),0),1);return t*t*(3-2*t);}
+// localX/localY are the sand plane's own local coordinates (world x, and
+// 4-worldZ — see sand.position.set(0,0,4) and its -90° X rotation below).
+// Must mirror groundHeight's own fire-clearing falloff exactly (same
+// centre, same 16–30 ramp) or the campfire/decor end up offset from the
+// actually-flat ground directly under them.
+function terrainHeight(localX,localY){
+  const distFromFire=Math.hypot(localX,localY+2);
+  return groundNoise(localX*0.15,localY*0.15)*sandU.uHeightAmp.value*smoothstepJS(16,30,distFromFire);
+}
+// Same idea for the floating-island platform (origin-centred, so its own
+// local Y is just -worldZ), plus the matching rim droop from platformMat's
+// own groundHeight override just below, so decor sits on the actual curved
+// surface instead of floating above it near the rim.
+function platformHeight(worldX,worldZ){
+  const localX=worldX,localY=-worldZ;
+  const base=groundNoise(localX*0.15,localY*0.15)*sandU.uHeightAmp.value;
+  const droop=-Math.pow(Math.min(Math.hypot(localX,localY)/11,1),2.2)*2.6;
+  return base+droop;
+}
+
+// ── RENDERER / SCENE / CAMERA ───────────────────────────────────────────────
+const renderer=new THREE.WebGLRenderer({antialias:Q.antialias,powerPreference:'high-performance',alpha:false});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(PR);
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.08;
+renderer.xr.enabled=true;
+// Cheap shadows: a low-res shadow map off the sun is enough for this scene's
+// scale (fire pit + nearby decor), kept soft rather than sharp-edged. Off
+// entirely on the potato tier — an extra shadow render pass is real cost.
+renderer.shadowMap.enabled=Q.shadows;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,500);
+scene.fog=new THREE.FogExp2(0x1b2a44,0.0062);
+
+// ── POST-PROCESS COMPOSITE (cheap bloom + dither) ────────────────────────────
+// A hand-rolled single extra pass rather than a full postprocessing
+// pipeline: render the scene once to an offscreen target, then one
+// fullscreen shader adds a few-tap glow around bright pixels ("bloom") and
+// dithers the quantized output — the same trick the N64 used to fake extra
+// colour depth on its 21-bit framebuffer, here breaking up banding instead
+// of a flat quantize step. Skipped inside an active WebXR session, where
+// Three.js's XR manager needs to own the framebuffer directly.
+const hasMSRT='WebGLMultisampleRenderTarget' in THREE;
+function makeSceneRT(w,h){
+  return (hasMSRT&&Q.antialias)
+    ? new THREE.WebGLMultisampleRenderTarget(w,h,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter})
+    : new THREE.WebGLRenderTarget(w,h,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter});
+}
+let sceneRT=null,compScene=null,compCam=null,compU=null;
+if(Q.composite){
+  sceneRT=makeSceneRT(innerWidth*PR,innerHeight*PR);
+  compU={tDiffuse:{value:sceneRT.texture},uRes:{value:new THREE.Vector2(innerWidth*PR,innerHeight*PR)},uBloom:{value:1.0}};
+  compScene=new THREE.Scene();
+  compCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+  const compQuad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.ShaderMaterial({
+    uniforms:compU,depthTest:false,depthWrite:false,
+    vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`,
+    fragmentShader:`uniform sampler2D tDiffuse;uniform vec2 uRes;uniform float uBloom;
+      varying vec2 vUv;
+      float hash(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
+      void main(){
+        vec2 texel=1.0/uRes;
+        vec3 col=texture2D(tDiffuse,vUv).rgb;
+        vec3 s1=texture2D(tDiffuse,vUv+vec2(1.5,1.5)*texel*2.2).rgb;
+        vec3 s2=texture2D(tDiffuse,vUv+vec2(-1.5,1.5)*texel*2.2).rgb;
+        vec3 s3=texture2D(tDiffuse,vUv+vec2(1.5,-1.5)*texel*2.2).rgb;
+        vec3 s4=texture2D(tDiffuse,vUv+vec2(-1.5,-1.5)*texel*2.2).rgb;
+        vec3 lw=vec3(.299,.587,.114);
+        vec3 bloom=s1*smoothstep(.65,1.3,dot(s1,lw))+s2*smoothstep(.65,1.3,dot(s2,lw))
+                  +s3*smoothstep(.65,1.3,dot(s3,lw))+s4*smoothstep(.65,1.3,dot(s4,lw));
+        col+=bloom*0.14*uBloom;
+        float d=hash(gl_FragCoord.xy)-0.5;
+        float levels=46.0;
+        col=floor(col*levels+0.5+d)/levels;
+        gl_FragColor=vec4(col,1.0);
+      }`
+  }));
+  compScene.add(compQuad);
+}
+
+addEventListener('resize',()=>{
+  cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+  if(Q.composite){
+    sceneRT.setSize(innerWidth*PR,innerHeight*PR);
+    compU.uRes.value.set(innerWidth*PR,innerHeight*PR);
+  }
+});
+
+// Seated camera behind the fire, facing the ocean. Limited drag so the
+// framing never breaks the "sitting on the beach" composition.
+const SEAT=new THREE.Vector3(0,1.55,11);
+let cAz=0,cAzT=0,cPo=1.18,cPoT=1.18,cR=11.5,cRT=11.5; // spherical offsets around a look target ahead of the seat
+let drag=false,mPrev=[0,0];
+function updCam(){
+  cAz+=(cAzT-cAz)*.07; cPo+=(cPoT-cPo)*.07; cR+=(cRT-cR)*.07;
+  const breathe=Math.sin(performance.now()*.0005)*.03;
+  cam.position.set(Math.sin(cAz)*1.6, SEAT.y+breathe, SEAT.z+cR-11.5);
+  cam.lookAt(Math.sin(cAz)*6, SEAT.y-0.35+Math.cos(cPo-1.18)*0,-26);
+}
+const dom=renderer.domElement;
+dom.addEventListener('mousedown',e=>{drag=true;mPrev=[e.clientX,e.clientY]});
+dom.addEventListener('mousemove',e=>{
+  if(!drag)return;
+  cAzT=Math.max(-.42,Math.min(.42,cAzT-(e.clientX-mPrev[0])*.0022));
+  mPrev=[e.clientX,e.clientY];
+});
+dom.addEventListener('mouseup',()=>drag=false);
+dom.addEventListener('wheel',e=>{cRT=Math.max(-2,Math.min(4,cRT-e.deltaY*.01))},{passive:true});
+let tp=null;
+dom.addEventListener('touchstart',e=>{tp=e.touches[0]},{passive:true});
+dom.addEventListener('touchmove',e=>{const t=e.touches[0];cAzT=Math.max(-.42,Math.min(.42,cAzT-(t.clientX-tp.clientX)*.0022));tp=t},{passive:true});
+
+// ── BIOMES ───────────────────────────────────────────────────────────────────
+// Healing Lands generalizes the original single beach scene into a library
+// of procedural "realms" — the same campfire/chakra ritual and real-clock
+// day/night cycle, re-skinned by a compact data record per biome instead of
+// bespoke code per biome. Each record seeds a day/night palette (below) plus
+// decor archetypes and an ambient particle layer; only the flagship
+// "Coastal Shore" biome keeps its original bespoke ocean/sand shaders.
+const BIOMES=[
+  {id:'pine-forest', name:'Pine Forest', cat:'terrestrial',
+   sky:{h:0.58,s:0.45}, ground:{h:0.33,s:0.35,l:0.28}, water:null,
+   wetGround:false, decor:['tree','log','rock','bush','quadruped'], tint:0x2f3a28, density:1.4,
+   particle:{type:'pollen',color:0xcfe8a0,count:120,speed:0.3,spread:45}, windBrightness:0.4},
+  {id:'desert-dunes', name:'Desert Dunes', cat:'terrestrial',
+   sky:{h:0.11,s:0.5}, ground:{h:0.09,s:0.55,l:0.62}, water:null,
+   wetGround:false, decor:['rock','spike'], tint:0xc98a4b, density:0.5,
+   particle:{type:'dust',color:0xe8c99a,count:150,speed:0.6,spread:60}, windBrightness:0.85},
+  {id:'alpine-tundra', name:'Alpine Tundra', cat:'terrestrial',
+   sky:{h:0.56,s:0.3}, ground:{h:0.15,s:0.08,l:0.78}, water:null,
+   wetGround:false, decor:['rock','spike','quadruped'], tint:0x8a9a95, density:0.6,
+   particle:{type:'snow',color:0xffffff,count:140,speed:0.4,spread:50}, windBrightness:0.9},
+  {id:'mountain-summit', name:'Mountain Summit', cat:'terrestrial',
+   sky:{h:0.57,s:0.4}, ground:{h:0.6,s:0.05,l:0.7}, water:null,
+   wetGround:false, decor:['rock','pillar','shard'], tint:0x707880, density:0.7,
+   particle:{type:'snow',color:0xf5f5ff,count:100,speed:0.5,spread:55}, windBrightness:1.0},
+  {id:'savanna-plains', name:'Savanna Plains', cat:'terrestrial',
+   sky:{h:0.13,s:0.4}, ground:{h:0.12,s:0.45,l:0.52}, water:null,
+   wetGround:false, decor:['tree','rock','bush','quadruped'], tint:0xc2a24a, density:0.5,
+   particle:{type:'pollen',color:0xe8d48a,count:90,speed:0.35,spread:50}, windBrightness:0.75},
+  {id:'rainforest-canopy', name:'Rainforest Canopy', cat:'terrestrial',
+   sky:{h:0.42,s:0.35}, ground:{h:0.36,s:0.55,l:0.24}, water:null,
+   wetGround:true, decor:['tree','frond','rock','bush','log'], tint:0x1f4a2e, density:1.8,
+   particle:{type:'spores',color:0x9fe8a0,count:160,speed:0.25,spread:40}, windBrightness:0.3},
+  {id:'volcanic-highlands', name:'Volcanic Highlands', cat:'terrestrial',
+   sky:{h:0.05,s:0.5}, ground:{h:0.02,s:0.4,l:0.14}, water:null,
+   wetGround:false, decor:['rock','spike','pillar'], tint:0x3a2420, density:0.8,
+   particle:{type:'embers',color:0xff8a3c,count:130,speed:0.7,spread:45}, windBrightness:0.55},
+  {id:'red-canyon', name:'Red Canyon', cat:'terrestrial',
+   sky:{h:0.08,s:0.45}, ground:{h:0.04,s:0.55,l:0.42}, water:null,
+   wetGround:false, decor:['rock','pillar','shard'], tint:0xa8502e, density:0.6,
+   particle:{type:'dust',color:0xd98a5c,count:100,speed:0.5,spread:55}, windBrightness:0.8},
+  {id:'crystal-cavern', name:'Crystal Cavern', cat:'terrestrial',
+   sky:{h:0.65,s:0.15}, ground:{h:0.68,s:0.3,l:0.18}, water:null,
+   wetGround:true, decor:['crystal','shard','rock'], tint:0x6a4ac2, density:1.2,
+   particle:{type:'bioluminescence',color:0x7ad8ff,count:110,speed:0.2,spread:35}, windBrightness:0.15},
+  {id:'bamboo-grove', name:'Bamboo Grove', cat:'terrestrial',
+   sky:{h:0.3,s:0.3}, ground:{h:0.28,s:0.3,l:0.34}, water:null,
+   wetGround:false, decor:['pillar','rock','log','bush'], tint:0x4a6a34, density:1.5,
+   particle:{type:'leaves',color:0x9ac25a,count:95,speed:0.3,spread:40}, windBrightness:0.5},
+  {id:'coastal-shore', name:'Coastal Shore', cat:'aquatic',
+   sky:{h:0.58,s:0.55}, ground:{h:0.11,s:0.42,l:0.74}, water:{h:0.52,s:0.55},
+   wetGround:true, decor:['rock','log'], tint:0x2a2420, density:1.0,
+   particle:{type:'spores',color:0xffe3c2,count:0,speed:0,spread:0}, windBrightness:0.6},
+  {id:'coral-reef', name:'Coral Reef', cat:'aquatic', submerged:true,
+   sky:{h:0.55,s:0.5}, ground:{h:0.08,s:0.5,l:0.68}, water:{h:0.48,s:0.6},
+   wetGround:false, decor:['coral','rock','ring'], tint:0xff7a5c, density:1.1,
+   particle:{type:'bubbles',color:0xbff0ff,count:120,speed:0.5,spread:40}, windBrightness:0.5},
+  {id:'arctic-ice', name:'Arctic Ice Field', cat:'aquatic',
+   sky:{h:0.57,s:0.25}, ground:{h:0.55,s:0.1,l:0.85}, water:{h:0.54,s:0.4},
+   wetGround:true, decor:['shard','crystal','rock'], tint:0xbfe8f0, density:0.5,
+   particle:{type:'snow',color:0xffffff,count:130,speed:0.45,spread:55}, windBrightness:0.95},
+  {id:'abyssal-deep', name:'Abyssal Deep', cat:'aquatic', submerged:true,
+   sky:{h:0.65,s:0.15}, ground:{h:0.68,s:0.2,l:0.08}, water:{h:0.64,s:0.3},
+   wetGround:false, decor:['rock','crystal','coral'], tint:0x1a2a3a, density:0.5,
+   particle:{type:'bioluminescence',color:0x4ad8e8,count:150,speed:0.2,spread:50}, windBrightness:0.1},
+  {id:'still-lake', name:'Still Mountain Lake', cat:'aquatic',
+   sky:{h:0.56,s:0.4}, ground:{h:0.3,s:0.3,l:0.4}, water:{h:0.55,s:0.35},
+   wetGround:false, decor:['tree','rock','log'], tint:0x3a4a3a, density:0.7,
+   particle:{type:'pollen',color:0xdfe8c0,count:70,speed:0.2,spread:45}, windBrightness:0.55},
+  {id:'mountain-river', name:'Mountain River', cat:'aquatic',
+   sky:{h:0.57,s:0.35}, ground:{h:0.25,s:0.25,l:0.45}, water:{h:0.5,s:0.45},
+   wetGround:true, decor:['tree','rock','log'], tint:0x5a6a52, density:0.9,
+   particle:{type:'spores',color:0xcfe8c0,count:80,speed:0.4,spread:40}, windBrightness:0.7},
+  {id:'misty-wetland', name:'Misty Wetland', cat:'aquatic',
+   sky:{h:0.4,s:0.2}, ground:{h:0.3,s:0.3,l:0.26}, water:{h:0.35,s:0.3},
+   wetGround:true, decor:['frond','log','rock','bush'], tint:0x3a4028, density:1.1,
+   particle:{type:'spores',color:0x9ab07a,count:100,speed:0.25,spread:40}, windBrightness:0.3},
+  {id:'mangrove-shallows', name:'Mangrove Shallows', cat:'aquatic',
+   // Real mangrove swamp water runs yellow to dark tea-brown — tannins
+   // from decaying leaf litter, not clear or algae-green — over dark
+   // brown-grey mud; the canopy above keeps its green in tint/decor.
+   sky:{h:0.45,s:0.3}, ground:{h:0.09,s:0.3,l:0.22}, water:{h:0.1,s:0.5},
+   wetGround:true, decor:['frond','log','rock','bush'], tint:0x2f4a3a, density:1.3,
+   particle:{type:'fireflies',color:0xdfff9a,count:90,speed:0.2,spread:35}, windBrightness:0.35},
+  {id:'kelp-forest', name:'Kelp Forest', cat:'aquatic', submerged:true,
+   // Real giant-kelp canopy reads golden-brown to olive in sunlight, not
+   // green — it's a brown alga, not a plant — against blue-green water,
+   // so ground/tint lean warm gold-olive rather than the leafy green a
+   // land forest would use.
+   sky:{h:0.62,s:0.2}, ground:{h:0.13,s:0.45,l:0.22}, water:{h:0.48,s:0.5},
+   wetGround:false, decor:['frond','rock','crystal'], tint:0x8a7a2a, density:1.4,
+   particle:{type:'bubbles',color:0xaef0e0,count:140,speed:0.35,spread:45}, windBrightness:0.2},
+  {id:'hydrothermal-vent', name:'Hydrothermal Vent', cat:'aquatic', submerged:true,
+   sky:{h:0.68,s:0.15}, ground:{h:0.05,s:0.3,l:0.15}, water:{h:0.6,s:0.25},
+   wetGround:false, decor:['pillar','rock','crystal'], tint:0x6a3a2a, density:0.9,
+   particle:{type:'bubbles',color:0xffb070,count:110,speed:0.5,spread:40}, windBrightness:0.15},
+  {id:'sky-islands', name:'Sky Islands', cat:'air', groundless:true,
+   sky:{h:0.58,s:0.5}, ground:{h:0.3,s:0.35,l:0.42}, water:null,
+   wetGround:false, decor:['tree','rock','ring'], tint:0x5a8a4a, density:0.8,
+   particle:{type:'dust',color:0xdfe8ff,count:90,speed:0.3,spread:60}, windBrightness:0.9},
+  {id:'cloud-sea', name:'Cloud Sea', cat:'air', groundless:true,
+   sky:{h:0.56,s:0.35}, ground:{h:0.58,s:0.05,l:0.88}, water:null,
+   wetGround:false, decor:['ring','pillar'], tint:0xffffff, density:0.5,
+   particle:{type:'dust',color:0xffffff,count:100,speed:0.25,spread:60}, windBrightness:0.8},
+  {id:'aurora-veil', name:'Aurora Veil', cat:'air', groundless:true,
+   sky:{h:0.75,s:0.4}, ground:{h:0.55,s:0.15,l:0.2}, water:null,
+   wetGround:false, decor:['crystal','shard','rock'], tint:0x4ae8a0, density:0.6,
+   particle:{type:'stardust',color:0x8affc2,count:130,speed:0.3,spread:55}, windBrightness:0.85},
+  {id:'nebula-drift', name:'Nebula Drift', cat:'air', groundless:true,
+   sky:{h:0.78,s:0.45}, ground:{h:0.8,s:0.2,l:0.12}, water:null,
+   wetGround:false, decor:['crystal','ring','pillar'], tint:0xa05aff, density:0.5,
+   particle:{type:'stardust',color:0xd0a0ff,count:170,speed:0.25,spread:70}, windBrightness:0.6},
+  {id:'astral-plane', name:'Astral Plane', cat:'air', groundless:true,
+   sky:{h:0.68,s:0.3}, ground:{h:0.65,s:0.1,l:0.3}, water:null,
+   wetGround:false, decor:['ring','crystal','pillar'], tint:0x7ac2ff, density:0.6,
+   particle:{type:'stardust',color:0xbfe0ff,count:140,speed:0.2,spread:65}, windBrightness:0.5},
+  {id:'lucid-dreamscape', name:'Lucid Dreamscape', cat:'air', groundless:true,
+   sky:{h:0.85,s:0.4}, ground:{h:0.9,s:0.25,l:0.5}, water:null,
+   wetGround:false, decor:['ring','crystal','shard'], tint:0xe88ad0, density:0.7,
+   particle:{type:'pollen',color:0xffc2e8,count:110,speed:0.25,spread:55}, windBrightness:0.5},
+  {id:'storm-eye', name:'Eye of the Storm', cat:'air', groundless:true,
+   sky:{h:0.6,s:0.3}, ground:{h:0.58,s:0.1,l:0.5}, water:null,
+   wetGround:false, decor:['ring','pillar'], tint:0x8a98a8, density:0.5,
+   // The eye of a storm is famously the calm, still center the walls of
+   // weather circle around — low windBrightness on purpose, not high.
+   particle:{type:'rain',color:0xaad0e8,count:70,speed:0.5,spread:60}, windBrightness:0.35},
+  {id:'celestial-temple', name:'Celestial Temple', cat:'air', groundless:true,
+   sky:{h:0.62,s:0.3}, ground:{h:0.14,s:0.1,l:0.75}, water:null,
+   wetGround:false, decor:['pillar','ring'], tint:0xf0e2b0, density:0.6,
+   particle:{type:'stardust',color:0xfff0c0,count:100,speed:0.2,spread:50}, windBrightness:0.7},
+  {id:'starlight-steppe', name:'Starlight Steppe', cat:'air', groundless:true,
+   sky:{h:0.7,s:0.35}, ground:{h:0.6,s:0.08,l:0.3}, water:null,
+   wetGround:false, decor:['shard','rock','crystal'], tint:0x6a7ac2, density:0.5,
+   particle:{type:'stardust',color:0xc2d0ff,count:120,speed:0.2,spread:60}, windBrightness:0.9},
+  {id:'wind-spire-peaks', name:'Wind Spire Peaks', cat:'air', groundless:true,
+   sky:{h:0.57,s:0.45}, ground:{h:0.5,s:0.1,l:0.55}, water:null,
+   wetGround:false, decor:['spike','shard','pillar'], tint:0x9ab0c2, density:0.6,
+   particle:{type:'dust',color:0xe8f0ff,count:100,speed:0.5,spread:65}, windBrightness:1.0},
+  {id:'giants-garden', name:"Giant's Garden", cat:'misc',
+   sky:{h:0.55,s:0.4}, ground:{h:0.28,s:0.45,l:0.32}, water:null,
+   wetGround:false, decor:['tree','log','rock','bush','quadruped'], tint:0x4a6a2a, density:1.0,
+   particle:{type:'pollen',color:0xd8e89a,count:100,speed:0.25,spread:70}, windBrightness:0.6},
+  {id:'dewdrop-meadow', name:'Dewdrop Meadow', cat:'misc',
+   sky:{h:0.4,s:0.3}, ground:{h:0.3,s:0.4,l:0.3}, water:{h:0.52,s:0.4},
+   wetGround:true, decor:['mushroom','crystal','rock','bush'], tint:0x7ac26a, density:1.6,
+   particle:{type:'pollen',color:0xcfe88a,count:130,speed:0.2,spread:30}, windBrightness:0.45},
+  {id:'quantum-foam', name:'Quantum Foam', cat:'misc', groundless:true,
+   sky:{h:0.78,s:0.2}, ground:{h:0.75,s:0.15,l:0.15}, water:null,
+   wetGround:false, decor:['crystal','ring','shard'], tint:0x9affe8, density:0.9,
+   particle:{type:'bioluminescence',color:0x9affe8,count:180,speed:0.3,spread:35}, windBrightness:0.3},
+  {id:'high-stratosphere', name:'High Stratosphere', cat:'misc', groundless:true,
+   sky:{h:0.62,s:0.55}, ground:{h:0.6,s:0.1,l:0.6}, water:null,
+   wetGround:false, decor:['ring','pillar'], tint:0xcfe0ff, density:0.4,
+   particle:{type:'stardust',color:0xffffff,count:90,speed:0.2,spread:70}, windBrightness:1.0},
+  {id:'mirror-dimension', name:'Mirror Dimension', cat:'misc',
+   sky:{h:0.58,s:0.25}, ground:{h:0.58,s:0.05,l:0.5}, water:{h:0.58,s:0.2},
+   wetGround:false, decor:['ring','crystal','pillar'], tint:0xd0e8ff, density:0.6,
+   particle:{type:'dust',color:0xe8f4ff,count:90,speed:0.2,spread:50}, windBrightness:0.5},
+  {id:'clockwork-gearscape', name:'Clockwork Gearscape', cat:'misc',
+   sky:{h:0.1,s:0.2}, ground:{h:0.1,s:0.35,l:0.3}, water:null,
+   wetGround:false, decor:['ring','pillar','rock'], tint:0xb8822a, density:1.0,
+   particle:{type:'sparks',color:0xffcf6a,count:100,speed:0.4,spread:40}, windBrightness:0.45},
+  {id:'bioluminescent-depths', name:'Bioluminescent Depths', cat:'misc',
+   sky:{h:0.72,s:0.3}, ground:{h:0.7,s:0.25,l:0.12}, water:null,
+   wetGround:true, decor:['crystal','mushroom','rock'], tint:0x4ae0c2, density:1.1,
+   particle:{type:'bioluminescence',color:0x6af0d0,count:150,speed:0.2,spread:40}, windBrightness:0.15},
+  {id:'glitch-matrix', name:'Glitch Matrix', cat:'misc',
+   sky:{h:0.35,s:0.6}, ground:{h:0.35,s:0.5,l:0.1}, water:null,
+   wetGround:false, decor:['ring','pillar','crystal'], tint:0x4aff7a, density:0.7,
+   particle:{type:'sparks',color:0x7affa0,count:140,speed:0.5,spread:45}, windBrightness:0.4},
+  {id:'time-loop-ruins', name:'Time-Loop Ruins', cat:'misc',
+   sky:{h:0.65,s:0.2}, ground:{h:0.1,s:0.2,l:0.35}, water:null,
+   wetGround:false, decor:['pillar','rock','ring'], tint:0x9a8a6a, density:0.9,
+   particle:{type:'dust',color:0xe8d8b0,count:80,speed:0.15,spread:45}, windBrightness:0.4},
+  {id:'elemental-forge', name:'Elemental Forge', cat:'misc',
+   sky:{h:0.06,s:0.55}, ground:{h:0.04,s:0.5,l:0.18}, water:null,
+   wetGround:false, decor:['pillar','rock','spike'], tint:0xff6a2a, density:0.9,
+   particle:{type:'embers',color:0xffa03c,count:160,speed:0.6,spread:40}, windBrightness:0.6},
+  {id:'dreamroot-library', name:'Dreamroot Library', cat:'misc',
+   sky:{h:0.68,s:0.25}, ground:{h:0.3,s:0.3,l:0.25}, water:null,
+   wetGround:false, decor:['tree','pillar','crystal'], tint:0x4a3a6a, density:1.2,
+   particle:{type:'fireflies',color:0xc2a0ff,count:100,speed:0.2,spread:40}, windBrightness:0.3},
+  {id:'glass-desert', name:'Glass Desert', cat:'misc',
+   // Real fused-silica desert glass (e.g. Libyan Desert Glass) is a pale
+   // yellow-green, not blue — distinct from arctic-ice's pale ice-blue
+   // rather than an accidental repeat of it.
+   sky:{h:0.14,s:0.35}, ground:{h:0.21,s:0.3,l:0.72}, water:null,
+   wetGround:false, decor:['crystal','shard','rock'], tint:0xd6e89a, density:0.5,
+   particle:{type:'dust',color:0xeaf6c8,count:100,speed:0.4,spread:60}, windBrightness:0.85},
+  // 43rd realm, dev-only: cat:'dev' matches none of the four picker tabs
+  // (terrestrial/aquatic/air/misc), so renderBiomeList() never lists it —
+  // reachable only via the #dev URL hash (see the picker wiring below).
+  // Neutral grayscale palette and every one of the 8 decor archetypes at
+  // once, for working on shared rendering (ground, lighting, particles,
+  // fog) without any one biome's colour or theme getting in the way.
+  {id:'dev-sandbox', name:'Dev Sandbox', cat:'dev',
+   sky:{h:0,s:0}, ground:{h:0,s:0,l:0.5}, water:null,
+   wetGround:false, decor:['rock','log','crystal','spike','pillar','ring','bush','quadruped','tree','frond','coral','shard','mushroom'], tint:0x888888, density:0.6,
+   particle:{type:'dust',color:0xcccccc,count:80,speed:0.3,spread:45}, windBrightness:0.5},
+];
+
+function hslHex(h,s,l){
+  const c=new THREE.Color();
+  c.setHSL(((h%1)+1)%1,THREE.MathUtils.clamp(s,0,1),THREE.MathUtils.clamp(l,0,1));
+  return c.getHex();
+}
+
+// ── TIME OF DAY ──────────────────────────────────────────────────────────────
+// A continuous day/night cycle read from the phone's own clock, not a
+// one-time dawn/dusk guess, re-read every frame so the sky keeps advancing
+// with real time. The 8 keyframes are generated procedurally from each
+// biome's base hues (buildTOD) rather than hand-authored per biome, so all
+// 42+ realms share one lighting curve instead of needing their own.
+const TOD_HOURS=[0,5,7,12,17,19,21,24];
+const TOD_SUN_H=[-.30,-.05,.12,.85,.35,.08,-.08,-.30];
+function buildTOD(biome){
+  // Fully-submerged biomes (open ocean depth, not a shoreline) never get a
+  // bright sunlit "noon" regardless of the real time of day — daylight
+  // doesn't reach the sea floor like that — so their day/dawn brightness
+  // curve is capped well below a normal open-sky one.
+  const cap=biome.submerged?0.4:1.0;
+  return TOD_HOURS.map((hr,i)=>{
+    const sh=TOD_SUN_H[i];
+    const day=THREE.MathUtils.clamp(sh*0.9+0.35,0,1)*cap;    // 0 at night, ~1 at noon (capped if submerged)
+    const dawn=Math.max(0,1-Math.abs(sh)*2.2)*cap;           // peaks near sunrise/sunset
+    const zenith=hslHex(biome.sky.h,biome.sky.s*(.5+day*.5),THREE.MathUtils.lerp(.06,.5,day));
+    const horizon=hslHex(biome.sky.h+(dawn>.3?.06:0),biome.sky.s*(.4+dawn*.5),THREE.MathUtils.lerp(.08,.78,Math.max(day,dawn*.8)));
+    const sun=hslHex(.11-dawn*.03,.55+dawn*.3,THREE.MathUtils.lerp(.55,.97,day));
+    const gBase=hslHex(biome.ground.h,biome.ground.s*(.4+day*.6),THREE.MathUtils.lerp(biome.ground.l*.3,biome.ground.l,day));
+    const gWet=hslHex(biome.ground.h,biome.ground.s*(.5+day*.5),THREE.MathUtils.lerp(biome.ground.l*.18,biome.ground.l*.55,day));
+    let wDeep=0x0a1624,wShallow=0x16283c;
+    if(biome.water){
+      wDeep=hslHex(biome.water.h,biome.water.s*(.5+day*.4),THREE.MathUtils.lerp(.05,.28,day));
+      wShallow=hslHex(biome.water.h+.03,biome.water.s*(.45+day*.4),THREE.MathUtils.lerp(.10,.52,day));
+    }
+    return {h:hr,zenith,horizon,sun,sandBase:gBase,sandWet:gWet,oceanDeep:wDeep,oceanShallow:wShallow,sh};
+  });
+}
+let currentBiome=BIOMES.find(b=>b.id==='coastal-shore')||BIOMES[0];
+let TOD_KEYS=buildTOD(currentBiome);
+const PAL={zenith:new THREE.Color(),horizon:new THREE.Color(),sun:new THREE.Color(),sandBase:new THREE.Color(),sandWet:new THREE.Color(),oceanDeep:new THREE.Color(),oceanShallow:new THREE.Color(),sh:0};
+const TOD_FIELDS=['zenith','horizon','sun','sandBase','sandWet','oceanDeep','oceanShallow'];
+const _todA=new THREE.Color(),_todB=new THREE.Color();
+function updateTimeOfDay(){
+  const d=new Date();
+  const hrNow=d.getHours()+d.getMinutes()/60+d.getSeconds()/3600;
+  let k0=TOD_KEYS[0],k1=TOD_KEYS[TOD_KEYS.length-1];
+  for(let i=0;i<TOD_KEYS.length-1;i++){
+    if(hrNow>=TOD_KEYS[i].h&&hrNow<=TOD_KEYS[i+1].h){k0=TOD_KEYS[i];k1=TOD_KEYS[i+1];break;}
+  }
+  const span=k1.h-k0.h,t=span>0?(hrNow-k0.h)/span:0;
+  TOD_FIELDS.forEach(key=>{
+    _todA.set(k0[key]);_todB.set(k1[key]);
+    PAL[key].copy(_todA).lerp(_todB,t);
+  });
+  PAL.sh=k0.sh+(k1.sh-k0.sh)*t;
+}
+updateTimeOfDay();
+
+// ── SKY DOME ─────────────────────────────────────────────────────────────────
+
+// A third shared black-and-white texture, same technique and same memory
+// principle as the ground/decor ones below: one grayscale SVG asset, reused
+// by the sky dome's own tint (uZenith/uHorizon) instead of a colour-baked
+// sky texture. Lower baseFrequency than the ground/decor grain gives
+// broader, cloud-like shapes rather than fine surface detail.
+const skyGrain=makeSplatTexture([128,192,256][qTier],'sky-grain',0.6);
+const skyU={
+  uZenith:{value:new THREE.Color(PAL.zenith)},
+  uHorizon:{value:new THREE.Color(PAL.horizon)},
+  uSunColor:{value:new THREE.Color(PAL.sun)},
+  uSunDir:{value:new THREE.Vector3(.18,PAL.sh,-1).normalize()},
+  uTime:{value:0},
+  uGrain:{value:skyGrain},
+  uVoidBelow:{value:0}
+};
+const sky=new THREE.Mesh(new THREE.SphereGeometry(460,32,20),new THREE.ShaderMaterial({
+  uniforms:skyU,side:THREE.BackSide,depthWrite:false,
+  vertexShader:`varying vec3 vDir;void main(){vDir=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+  fragmentShader:`uniform vec3 uZenith;uniform vec3 uHorizon;uniform vec3 uSunColor;uniform vec3 uSunDir;uniform float uTime;uniform float uVoidBelow;
+    uniform sampler2D uGrain;
+    varying vec3 vDir;
+    void main(){
+      float h=clamp(vDir.y*1.4+.06,0.,1.);
+      vec3 col=mix(uHorizon,uZenith,pow(h,.55));
+      float sunDot=max(dot(normalize(vDir),normalize(uSunDir)),0.);
+      float glow=pow(sunDot,22.)*.32+pow(sunDot,420.)*1.1;
+      col+=uSunColor*glow;
+      float cloud=texture2D(uGrain,vec2(vDir.x*0.5+uTime*0.002,vDir.z*0.5)).r*smoothstep(.0,.3,vDir.y)*smoothstep(.46,.08,vDir.y);
+      col=mix(col,col*.8+uHorizon*.55,cloud*.32);
+      // Floating-island biomes hide their ground plane entirely, so below
+      // the horizon is otherwise just this same flat uHorizon fill — from
+      // eye level that reads exactly like solid ground continuing to the
+      // horizon, defeating the point. A drifting, textured haze standing
+      // in for a distant cloud layer instead makes looking down (and past
+      // the platform's edge) read as open air, not more "beach".
+      if(uVoidBelow>0.5){
+        float depthBelow=clamp(-vDir.y*2.2,0.,1.);
+        float mistTex=texture2D(uGrain,vec2(vDir.x*0.35-uTime*0.004,vDir.z*0.35+uTime*0.003)).r;
+        vec3 mistCol=mix(uHorizon,vec3(0.92,0.94,0.97),0.55)+(mistTex-0.5)*0.12;
+        col=mix(col,mistCol,depthBelow);
+      }
+      gl_FragColor=vec4(col,1.);
+    }`
+}));
+scene.add(sky);
+
+// ── STARFIELD ────────────────────────────────────────────────────────────────
+// A fixed, seeded scatter of points just inside the sky dome (radius 430 vs.
+// the dome's 460), faded in only at night by updateSun() below, using the
+// exact same sun-height curve it already fades the sun disc with rather than
+// a separate day/night model of their own. Spherical sampling instead of
+// rejecting points outside a unit sphere keeps this a fixed-size loop.
+const starCount=[260,460,760][qTier];
+const starGeo=new THREE.BufferGeometry();
+const starPos=new Float32Array(starCount*3);
+const starCol=new Float32Array(starCount*3);
+for(let i=0;i<starCount;i++){
+  const theta=worldRng()*Math.PI*2;
+  const phi=(0.08+worldRng()*0.82)*(Math.PI/2); // 0=straight up; stops short of the horizon
+  const r=430,ringR=Math.sin(phi)*r;
+  starPos[i*3]=Math.cos(theta)*ringR;
+  starPos[i*3+1]=Math.cos(phi)*r;
+  starPos[i*3+2]=Math.sin(theta)*ringR;
+  const b=0.55+worldRng()*0.45;
+  starCol[i*3]=b;starCol[i*3+1]=b;starCol[i*3+2]=b+worldRng()*0.08;
+}
+starGeo.setAttribute('position',new THREE.BufferAttribute(starPos,3));
+starGeo.setAttribute('color',new THREE.BufferAttribute(starCol,3));
+const starsMat=new THREE.PointsMaterial({size:1.6,sizeAttenuation:false,vertexColors:true,transparent:true,opacity:0,depthWrite:false});
+const stars=new THREE.Points(starGeo,starsMat);
+scene.add(stars);
+
+const sunLight=new THREE.DirectionalLight(PAL.sun,1.15);
+sunLight.castShadow=true;
+sunLight.shadow.mapSize.set(Q.shadowSize,Q.shadowSize);
+sunLight.shadow.camera.left=-28;sunLight.shadow.camera.right=28;
+sunLight.shadow.camera.top=28;sunLight.shadow.camera.bottom=-28;
+sunLight.shadow.camera.near=60;sunLight.shadow.camera.far=160;
+sunLight.shadow.bias=-0.0015;
+const sunTarget=new THREE.Object3D();sunTarget.position.set(0,0,6);scene.add(sunTarget);
+sunLight.target=sunTarget;
+scene.add(sunLight);
+const ambL=new THREE.AmbientLight(0x3a2c38,.55);scene.add(ambL);
+const hemiL=new THREE.HemisphereLight(0x5a6a8a,0x2a1810,.6);scene.add(hemiL);
+
+// Sun glow disc — a small crisp core plus a soft halo, not a single blown-out blob
+const sunDisc=new THREE.Mesh(new THREE.CircleGeometry(2.2,24),new THREE.MeshBasicMaterial({color:0xfffbe8,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}));
+sunDisc.renderOrder=1;scene.add(sunDisc);
+const sunHalo=new THREE.Mesh(new THREE.CircleGeometry(7,24),new THREE.MeshBasicMaterial({color:PAL.sun,transparent:true,opacity:.22,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}));
+sunHalo.renderOrder=1;scene.add(sunHalo);
+
+// ── OCEAN ────────────────────────────────────────────────────────────────────
+const oSegX=Q.oceanSeg[0], oSegY=Q.oceanSeg[1];
+const oceanU={
+  uTime:{value:0},
+  uDeep:{value:new THREE.Color(PAL.oceanDeep)},
+  uShallow:{value:new THREE.Color(PAL.oceanShallow)},
+  uChakra:{value:new THREE.Color(0x224466)},
+  uSandWet:{value:new THREE.Color(PAL.sandWet)},
+  uColorSwapOn:{value:1} // 0 for fully-submerged biomes: the shoreline swap reads as mud on open water
+};
+const ocean=new THREE.Mesh(new THREE.PlaneGeometry(300,400,oSegX,oSegY),new THREE.ShaderMaterial({
+  uniforms:oceanU,transparent:true,depthWrite:true,
+  vertexShader:`uniform float uTime;varying vec2 vXY;varying float vH;varying float vFoam;varying float vDepth;
+    // Classic 2D Perlin noise (Ashima Arts / Stefan Gustavson, public domain)
+    vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
+    vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}
+    vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
+    vec2 fade(vec2 t){return t*t*t*(t*(t*6.0-15.0)+10.0);}
+    float cnoise(vec2 P){
+      vec4 Pi=floor(P.xyxy)+vec4(0.0,0.0,1.0,1.0);
+      vec4 Pf=fract(P.xyxy)-vec4(0.0,0.0,1.0,1.0);
+      Pi=mod289(Pi);
+      vec4 ix=Pi.xzxz,iy=Pi.yyww,fx=Pf.xzxz,fy=Pf.yyww;
+      vec4 i=permute(permute(ix)+iy);
+      vec4 gx=fract(i*(1.0/41.0))*2.0-1.0;
+      vec4 gy=abs(gx)-0.5;
+      vec4 tx=floor(gx+0.5);
+      gx=gx-tx;
+      vec2 g00=vec2(gx.x,gy.x),g10=vec2(gx.y,gy.y),g01=vec2(gx.z,gy.z),g11=vec2(gx.w,gy.w);
+      vec4 norm=taylorInvSqrt(vec4(dot(g00,g00),dot(g01,g01),dot(g10,g10),dot(g11,g11)));
+      g00*=norm.x;g01*=norm.y;g10*=norm.z;g11*=norm.w;
+      float n00=dot(g00,vec2(fx.x,fy.x)),n10=dot(g10,vec2(fx.y,fy.y)),n01=dot(g01,vec2(fx.z,fy.z)),n11=dot(g11,vec2(fx.w,fy.w));
+      vec2 fxy=fade(Pf.xy);
+      vec2 nx=mix(vec2(n00,n01),vec2(n10,n11),fxy.x);
+      return 2.3*mix(nx.x,nx.y,fxy.y);
+    }
+    // Fractal scaling: each octave halves in amplitude and roughly doubles
+    // in frequency, so fine ripples ride on top of the broad swell shape.
+    float fbm(vec2 p){
+      float v=0.0,a=0.52;
+      for(int i=0;i<4;i++){v+=a*cnoise(p);p=p*2.03+17.1;a*=0.5;}
+      return v;
+    }
+    // Seafloor profile: a shelf that shallows toward shore (y=-200) plus
+    // two submerged sand bars running roughly parallel to the beach.
+    // Real swells shoal as they cross a bar: group velocity drops, and to
+    // conserve energy flux the wave amplitude rises (shallower -> taller),
+    // peaking over the bar crest before relaxing in the deeper trough
+    // behind it. shoalAmp below approximates that with amplitude scaling
+    // as roughly 1/sqrt(depth) instead of a true 1/depth^(1/4) solution,
+    // which is close enough to read correctly without a real fluid sim.
+    float seafloorDepth(float y){
+      float shelf=clamp((200.0-y)/260.0,0.05,1.0);
+      float bar1=exp(-pow((y-90.0)/20.0,2.0))*0.4;
+      float bar2=exp(-pow((y-170.0)/26.0,2.0))*0.3;
+      return clamp(shelf-bar1-bar2,0.0,1.4);
+    }
+    void main(){
+      vXY=position.xy;
+      float x=position.x,y=position.y;
+      float shoreT=smoothstep(-200.,-80.,y);
+
+      float depth=seafloorDepth(y);
+      vDepth=depth;
+      float shoalAmp=clamp(1.0/sqrt(max(depth,0.22)),0.7,1.6);
+      // Shallow water also slows a wave down (celerity ~ sqrt(depth) in
+      // the shallow-water approximation) — the same shoaling that lifts
+      // the amplitude makes the swell visibly arrive slower as it closes
+      // in on the shore and crosses the bars. Wind-driven chop below
+      // isn't a shoaling swell, so it keeps running on raw uTime.
+      float waveSpeed=clamp(sqrt(max(depth,0.05)/1.4),0.35,1.0);
+      float st=uTime*waveSpeed;
+
+      // Dominant swell travels toward -y — the shore, and the viewer
+      // seated behind the fire. Its phase drifts on slow Perlin noise so
+      // consecutive waves never arrive identically.
+      float drift=fbm(vec2(x*0.01,st*0.05))*2.2;
+      float h=0.0;
+      h+=sin(y*0.045+st*0.85+drift)*0.32*shoalAmp;
+      h+=sin(y*0.07+x*0.012+st*1.15+drift*1.4)*0.14*shoalAmp;
+      // Cross-chop: smaller, undirected texture from the fbm itself.
+      h+=fbm(vec2(x*0.06,y*0.06-uTime*0.5))*0.16;
+      h+=fbm(vec2(x*0.15+uTime*0.12,y*0.15-uTime*0.9))*0.06;
+
+      float amp=mix(1.0,0.4,shoreT); // waves relax right at the sand
+      h*=amp;
+      vH=h;
+
+      float tide=-192.0+sin(uTime*0.35)*6.0;
+      float foam=1.0-smoothstep(0.0,9.0,abs(y-tide));
+      float crestFoam=smoothstep(0.30,0.5,abs(h))*(1.0-shoreT*0.6);
+      float barFoam=smoothstep(0.35,0.75,shoalAmp-1.0)*smoothstep(0.55,0.2,abs(h)); // bars break first
+      vFoam=max(max(foam,crestFoam*0.6),barFoam*0.5);
+
+      gl_Position=projectionMatrix*modelViewMatrix*vec4(x,y,h,1.0);
+    }`,
+  fragmentShader:`uniform vec3 uDeep;uniform vec3 uShallow;uniform vec3 uChakra;uniform vec3 uSandWet;uniform float uColorSwapOn;
+    varying vec2 vXY;varying float vH;varying float vFoam;varying float vDepth;
+    void main(){
+      float s=clamp(vH*1.6+0.5,0.0,1.0);
+      vec3 col=mix(uDeep,uShallow,s);
+      // Light bounces off the sand where a bar brings the bottom close to
+      // the surface, giving a lighter turquoise cast over the bars.
+      float shallowSand=smoothstep(0.42,0.08,vDepth);
+      col=mix(col,vec3(0.55,0.78,0.72),shallowSand*0.22);
+      col=mix(col,uChakra,0.16);
+      float glint=pow(max(0.0,1.0-abs(vH)*2.2),22.0);
+      col+=uChakra*pow(max(0.0,1.0-abs(vH)*2.2),6.0)*0.22+vec3(1.0,0.92,0.75)*glint*0.65;
+      col=mix(col,vec3(0.92,0.95,0.98),clamp(vFoam,0.0,1.0)*0.85);
+      // N64-style shoreline: instead of the mesh clipping hard against the
+      // sand, the water swaps toward the sand's own wet colour as it nears
+      // its edge, then dissolves to transparent — a soft alpha "colour
+      // swap" blend rather than a precise geometric intersection, so the
+      // hand-off into the sand's wet/swash colouring reads as continuous.
+      float edgeFade=smoothstep(-200.0,-196.0,vXY.y);
+      // The colour swap itself ramps in over a much wider band than the
+      // alpha fade: real shallows read the sandy bottom through the water
+      // well before the shoreline, so the hand-off is a visible gradient
+      // across many pixels rather than a last-instant snap at the seam.
+      float colorSwapT=(1.0-smoothstep(-200.0,-120.0,vXY.y))*uColorSwapOn;
+      col=mix(col,uSandWet,colorSwapT*0.6);
+      gl_FragColor=vec4(col,0.95*edgeFade);
+    }`
+}));
+ocean.rotation.x=-Math.PI/2;
+ocean.position.set(0,-0.05,-202);
+scene.add(ocean);
+// (the moving ocean surface skips receiveShadow — a shadow stuck to a
+// shifting wave mesh reads as a rendering glitch, not a cast shadow)
+
+// ── SAND ─────────────────────────────────────────────────────────────────────
+const sSeg=Q.sandSeg;
+const sandU={
+  uBase:{value:new THREE.Color(PAL.sandBase)},
+  uWet:{value:new THREE.Color(PAL.sandWet)},
+  uGlow:{value:new THREE.Color(0xff9944)},
+  uFireI:{value:0},
+  uTime:{value:0},
+  uWetOn:{value:1},
+  uShoreOn:{value:1},
+  uHeightAmp:{value:0.1},
+  uGrainScale:{value:1},
+  uGrainContrast:{value:1}
+};
+// A genuine SVG-generated "splat" texture — feTurbulence is SVG's own
+// procedural noise primitive, rendered here at a high resolution (scaled
+// down a tier on weaker hardware) and rasterized once into a canvas, rather
+// than a hand-rolled dot pattern. Real mip-mapping then means this stops
+// shimmering once it's small on screen near the horizon, the way pure
+// analytic shader noise doesn't. Image decoding is async, so the texture
+// exists (as a neutral placeholder) immediately and swaps in once the SVG
+// has rasterized a frame or two later — nothing else waits on it.
+// Textures are generated once as plain BLACK AND WHITE and reused as-is
+// across every biome; colour comes entirely from multiplying by each
+// material's own tint (map x color is automatic in Three.js — no shader
+// work needed), the same way a real engine shares one grayscale detail/mask
+// texture across many tinted materials instead of baking a colour copy per
+// skin. One shared texture asset standing in for 42+ biomes' worth of
+// "different" ground and decor surfaces, not 42 textures.
+function makeSplatTexture(size,seedStr,baseFreq){
+  const cnv=document.createElement('canvas');cnv.width=cnv.height=size;
+  const ctx=cnv.getContext('2d');
+  ctx.fillStyle='#808080';ctx.fillRect(0,0,size,size);
+  const tex=new THREE.CanvasTexture(cnv);
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+  tex.generateMipmaps=true;
+  tex.minFilter=THREE.LinearMipmapLinearFilter;
+  tex.magFilter=THREE.LinearFilter;
+  const seed=hashSeed(seedStr)%1000;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">`
+    +`<filter id="n" x="0" y="0" width="100%" height="100%">`
+    +`<feTurbulence type="fractalNoise" baseFrequency="${baseFreq||0.9}" numOctaves="4" seed="${seed}" stitchTiles="stitch" result="t"/>`
+    +`<feColorMatrix in="t" type="saturate" values="0"/>` // force true grayscale — no per-channel colour tint baked in
+    +`</filter><rect width="100%" height="100%" filter="url(#n)"/></svg>`;
+  const img=new Image();
+  img.onload=()=>{ctx.drawImage(img,0,0,size,size);tex.needsUpdate=true;};
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+  return tex;
+}
+const groundSplat=makeSplatTexture([256,384,512][qTier],'ground-splat',0.9);
+sandU.uGrain={value:groundSplat};
+// A finer-grained grayscale texture for decor (rock/bark/fur-scale detail),
+// shared by every biome's decorMat below the same way — one texture, many
+// tints, rather than a per-biome copy.
+const decorSplat=makeSplatTexture([192,256,320][qTier],'decor-splat',1.8);
+decorSplat.repeat.set(2,2);
+
+// The ground uses MeshStandardMaterial (via onBeforeCompile) rather than a
+// raw ShaderMaterial so it gets Three's real lighting + shadow-receiving
+// for free; the procedural height/colour logic below is spliced into the
+// standard chunk pipeline at the same injection points Three itself uses.
+const sandMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.88,metalness:0});
+sandMat.onBeforeCompile=(shader)=>{
+  Object.assign(shader.uniforms,sandU);
+  const noiseLib=`
+    varying vec2 vXY;
+    uniform float uHeightAmp;
+    float hash(vec2 p){return fract(sin(dot(p,vec2(27.1,61.7)))*43758.5453);}
+    float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+      float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));
+      return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
+    // Flat near the fire and the decor ring around it (every prop's own
+    // fixed y offset assumes flat ground, and there's no cheap way to keep
+    // dozens of individually-placed props sitting correctly on a noise
+    // surface that moves under them) — real relief only kicks in beyond
+    // where anything is actually placed, so it reads as rolling terrain
+    // around the clearing rather than hills shoving the campfire sideways.
+    float groundHeight(vec2 p){
+      float distFromFire=length(p-vec2(0.0,-2.0));
+      return noise(p*0.15)*uHeightAmp*smoothstep(16.0,30.0,distFromFire);
+    }
+  `;
+  shader.vertexShader=noiseLib+shader.vertexShader
+    .replace('#include <beginnormal_vertex>',`#include <beginnormal_vertex>
+      // Height-differential normal: a cheap finite-difference "bump map"
+      // straight off the same noise that displaces the ground, so lighting
+      // (and the shadows it casts/receives) reads the terrain's relief
+      // instead of shading a perfectly flat plane.
+      {
+        float heps=0.5;
+        float hC=groundHeight(position.xy);
+        float hX=groundHeight(position.xy+vec2(heps,0.0));
+        float hY=groundHeight(position.xy+vec2(0.0,heps));
+        objectNormal=normalize(vec3(-(hX-hC)/heps,-(hY-hC)/heps,1.0));
+      }`)
+    .replace('#include <begin_vertex>',`#include <begin_vertex>
+      vXY=position.xy;
+      transformed.z=groundHeight(position.xy);`);
+  shader.fragmentShader=noiseLib+`
+    uniform vec3 uBase;uniform vec3 uWet;uniform vec3 uGlow;uniform float uFireI;uniform float uTime;uniform float uWetOn;uniform float uShoreOn;
+    uniform float uGrainScale;uniform float uGrainContrast;
+    uniform sampler2D uGrain;
+  `+shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+    {
+      // uGrainScale/uGrainContrast (set per biome in applyTheme, from its
+      // own ground saturation/lightness/wetness) give each realm's ground
+      // its own surface character — fine and smooth for snow/ice/mist,
+      // coarse and high-contrast for bare rock/desert/canyon — instead of
+      // literally the same texture everywhere with only the base colour
+      // changed.
+      float grain=(noise(vXY*6.0*uGrainScale)*0.06+noise(vXY*22.0*uGrainScale)*0.03)*uGrainContrast;
+      float splat=(texture2D(uGrain,vXY*0.35*uGrainScale).r-0.5)*uGrainContrast;
+      vec3 col=uBase+grain+splat*0.05;
+      float wetT=smoothstep(2.0,10.0,vXY.y);
+
+      // Swash: a sheet of water rushes up the sand with each wave, then
+      // drains back slower than it arrived — the same deceleration that
+      // slows the swell offshore (see the ocean shader), just finishing
+      // the job on the beach. vXY.y=10 is the shoreline edge, vXY.y=-10
+      // is dry sand toward the fire; reachY is how far up the current
+      // wave has pushed, right now. uShoreOn keeps this travelling wave
+      // (and its foam line) to biomes with an actual body of water —
+      // "damp ground" biomes with no shoreline (a rainforest floor, a
+      // cave floor) still get wetT's static dampness below, but without
+      // this a visible band of "water" swept across them on a timer,
+      // which is exactly the "ocean on dry land" look this is fixing.
+      float cycleT=uTime/5.5;
+      float seed=hash(vec2(floor(cycleT),1.7));
+      float cyclePhase=fract(cycleT);
+      float push=cyclePhase<0.3?smoothstep(0.0,0.3,cyclePhase):1.0-smoothstep(0.3,1.0,cyclePhase);
+      push=pow(push,0.6);
+      float reachY=10.0-push*9.5+(seed-0.5)*3.0*push;
+      float swashWet=smoothstep(reachY-2.0,reachY+1.2,vXY.y)*uShoreOn;
+      float edgeBand=(1.0-smoothstep(0.0,2.6,abs(vXY.y-reachY)))*uShoreOn;
+
+      float wetness=max(wetT*0.55,swashWet*0.95)*uWetOn;
+      col=mix(col,uWet*0.8,wetness);
+      col=mix(col,vec3(0.96,0.98,1.0),edgeBand*0.75*uWetOn); // foam right at the moving waterline
+
+      float d=length(vXY-vec2(0.0,-2.0));
+      float glow=uFireI*exp(-d*d*0.045);
+      col+=uGlow*glow*0.9;
+      diffuseColor.rgb=col;
+    }`);
+};
+const sand=new THREE.Mesh(new THREE.PlaneGeometry(60,20,sSeg,Math.trunc(sSeg*0.4)),sandMat);
+sand.rotation.x=-Math.PI/2;
+sand.position.set(0,0,4);
+sand.receiveShadow=true;
+scene.add(sand);
+
+// The detailed sand plane above is only 20 units deep — built that size for
+// its grain/swash shader's own local-coordinate math, not as a horizon.
+// Past its far edge the ground used to just stop, handing off directly to
+// the sky dome's own horizon-coloured gradient a few units later: a hard
+// seam that, at a glance, reads as a distant shoreline even on dry land.
+// A second plane closes that gap — but two *different* materials, even
+// colour-matched and fogged identically, still handed off with a visible
+// seam: sand's bump-perturbed normal (below) makes it catch light in a
+// lively, varied way a flat Lambert/Standard normal never does, so the
+// far ground always read as a flatter, duller band next to it regardless
+// of which lit material or how much Fresnel it had. Reusing sandMat
+// itself sidesteps the mismatch entirely — same shader, same lighting
+// response, so the far ground is just more of the same ground rather
+// than a different-looking thing bolted on at the edge.
+// A clone, not the same instance: it needs its own uWetOn pinned to always-
+// dry. sandMat's wetness/swash math is written in sand's own local
+// coordinates (a ±10-unit shoreline), and farGround's local Y runs to
+// ±215 — reusing sand's live wetness there would read the far ground as
+// wet starting right at the seam (vXY.y saturates past 10) while sand's
+// own far edge is dry, trading one mismatched band for another on every
+// wet-ground biome. Everything else (base colour, grain, bump lighting,
+// fire glow) still tracks sand's uniforms live, by reference.
+const farGroundMat=sandMat.clone();
+// Without this, Three reuses sandMat's already-compiled program for this
+// clone (nothing about a MeshStandardMaterial's cache key reflects which
+// onBeforeCompile function it has), so the uWetOn override below would be
+// silently ignored and farGround would render with sand's live, biome-
+// driven wetness after all — forcing a distinct cache key is what actually
+// makes it compile (and keep) its own copy of the uniforms.
+farGroundMat.customProgramCacheKey=()=>'farGround';
+farGroundMat.onBeforeCompile=(shader)=>{
+  sandMat.onBeforeCompile(shader);
+  shader.uniforms.uWetOn={value:0};
+};
+// Depth/position chosen to overlap the near sand plane's far edge (z=-6)
+// by several units rather than merely touch it — the two used to leave a
+// sliver gap between them (a seam the raw, unfogged sky dome showed through
+// as a flat pale band, read as a strip of distant water even on dry land).
+const farGround=new THREE.Mesh(new THREE.PlaneGeometry(500,430,24,20),farGroundMat);
+farGround.rotation.x=-Math.PI/2;
+farGround.position.set(0,-0.08,-205);
+scene.add(farGround);
+
+// A sky/fantasy biome (biome.groundless) swaps the dry-land ground out for
+// this instead: a small disc to stand on, with a tapered underside so it
+// reads as a chunk of floating rock rather than a sheet hanging in space —
+// beyond its edge there's just open sky, not a beach with props scattered
+// on it. Sized to clear decor's own tighter 3–8 unit scatter radius for
+// groundless biomes (see buildDecor() below) with a bit of margin.
+//
+// A flat disc alone turned out not to be enough: from a standing camera a
+// little way above it, a plane this size STILL visually recedes almost to
+// the horizon before its true edge becomes noticeable (the same perspective
+// quirk behind the dry-land far-ground seam elsewhere in this file) — the
+// edge was only ever a thin sliver right at the skyline, not the clearly
+// "small island" read this is after. So the top is domed and droops toward
+// its rim (radialDroop below) rather than staying flat: the ground visibly
+// curves away underfoot into the void-tinted sky past a fairly short
+// distance, which reads as standing on a small floating shape even though
+// the geometry itself is still the same size.
+const platformMat=sandMat.clone();
+platformMat.customProgramCacheKey=()=>'floatPlatform';
+platformMat.onBeforeCompile=(shader)=>{
+  sandMat.onBeforeCompile(shader);
+  shader.uniforms.uWetOn={value:0};
+  // Redefining groundHeight itself (rather than adding the droop at each
+  // call site separately) keeps it inside the same finite-difference bump
+  // the normal is already computed from, so the drooping rim also catches
+  // light correctly instead of staying shaded as if it were still flat.
+  // A full, independent redefinition rather than building on the land
+  // version above: the platform is small enough that the land's fire-
+  // clearing falloff would flatten the entire thing (its whole radius is
+  // well inside that falloff's reach), which would erase the rim droop
+  // this biome type actually depends on.
+  const groundHeightSrc=`    float groundHeight(vec2 p){
+      float distFromFire=length(p-vec2(0.0,-2.0));
+      return noise(p*0.15)*uHeightAmp*smoothstep(16.0,30.0,distFromFire);
+    }`;
+  const patched=shader.vertexShader.replace(groundHeightSrc,
+    'float groundHeight(vec2 p){return noise(p*0.15)*uHeightAmp-pow(clamp(length(p)/11.0,0.,1.),2.2)*2.6;}');
+  if(patched===shader.vertexShader)console.warn('floatPlatform: groundHeight patch did not match — rim droop will not apply');
+  shader.vertexShader=patched;
+};
+const floatPlatform=new THREE.Group();
+const platformTop=new THREE.Mesh(new THREE.CircleGeometry(11,40),platformMat);
+platformTop.rotation.x=-Math.PI/2;
+platformTop.receiveShadow=true;
+floatPlatform.add(platformTop);
+const platformUndersideMat=new THREE.MeshStandardMaterial({color:0x332e26,map:decorSplat,roughness:.95});
+const platformUnderside=new THREE.Mesh(new THREE.CylinderGeometry(9,0.8,7,14,1,true),platformUndersideMat);
+platformUnderside.position.y=-5.5;
+floatPlatform.add(platformUnderside);
+floatPlatform.visible=false;
+scene.add(floatPlatform);
+
+// ── DECOR: theme-driven prop scattering ──────────────────────────────────────
+// Thirteen low-poly archetypes, all still built only from the same handful of
+// shared unit geometries below (no new BufferGeometry added for any of
+// them) — 'rock'/'crystal' read as boulders, gems, ice or alien pods;
+// 'pillar' as columns, ruins or bamboo stalks; 'ring' as portals, coral
+// rings or halos; 'bush' as low ground flora; 'quadruped' as a generic
+// deer/wolf/fox/goat-ish silhouette. The five composite archetypes exist so
+// a biome's decor can actually look like its own thing rather than a
+// recolour of the same cones and boxes everywhere: 'tree' (trunk +
+// conifer tiers or a deciduous canopy blob) for forests/groves/gardens,
+// 'frond' (bent trunk + a fan of blades) for palms/reeds/kelp, 'coral' (a
+// small branching cluster) for reefs and scrub, 'shard' (an elongated
+// crystal) for ice/glass spires, and 'mushroom' (cap + stem) for damp or
+// alien ground cover — depending on each biome's tint and placement
+// density. Fauna is kept to a handful of biomes at a count of one or two:
+// ambient life going about its own business in the background, not a
+// petting zoo.
+const DECOR_BASE_COUNT={rock:14,log:4,crystal:11,spike:10,pillar:6,ring:4,bush:7,quadruped:1,tree:6,frond:5,coral:9,shard:9,mushroom:8};
+// One shared UNIT geometry per archetype (radius/height always 1, any
+// taper ratio baked in), built once and reused by every instance across
+// every biome — per-instance size comes entirely from Object3D.scale
+// instead of a uniquely-constructed BufferGeometry per prop. 42 biomes'
+// worth of decor now costs a fixed, small set of geometries, not hundreds
+// of one-off copies rebuilt on every biome switch.
+const DECOR_GEO={
+  rock:new THREE.IcosahedronGeometry(1,0),
+  log:new THREE.CylinderGeometry(1,1.286,1,7),   // top/bottom ratio from the original .14/.18
+  crystal:new THREE.OctahedronGeometry(1,0),
+  spike:new THREE.ConeGeometry(1,1,6),
+  pillar:new THREE.CylinderGeometry(1,1.375,1,8), // ratio from the original .16/.22
+  ring:new THREE.TorusGeometry(1,.25,8,16),       // tube ratio from the original .08/.32
+  quadBody:new THREE.CylinderGeometry(1,.92,1,6),
+  quadLeg:new THREE.CylinderGeometry(1,.8,1,5),
+  quadHead:new THREE.BoxGeometry(1,1,1),
+  quadTail:new THREE.ConeGeometry(1,1,5),
+};
+function makeDecorMesh(type,mat,rng){
+  switch(type){
+    case 'log':{
+      const m=new THREE.Mesh(DECOR_GEO.log,mat);
+      m.scale.set(.14,2.2+rng()*1.0,.14);
+      return m;
+    }
+    case 'crystal':{
+      const m=new THREE.Mesh(DECOR_GEO.crystal,mat);
+      m.scale.setScalar(.28+rng()*.26);
+      return m;
+    }
+    case 'spike':{
+      const radius=.2+rng()*.2;
+      const m=new THREE.Mesh(DECOR_GEO.spike,mat);
+      m.scale.set(radius,1.0+rng()*1.4,radius);
+      return m;
+    }
+    case 'pillar':{
+      const m=new THREE.Mesh(DECOR_GEO.pillar,mat);
+      m.scale.set(.16,1.8+rng()*1.8,.16);
+      return m;
+    }
+    case 'ring':{
+      const m=new THREE.Mesh(DECOR_GEO.ring,mat);
+      m.scale.setScalar(.32+rng()*.22);
+      return m;
+    }
+    case 'tree':{
+      // Trunk always a thin log; the canopy is one of two cheap variants
+      // so a stand of these doesn't read as identical copies — conifer
+      // tiers (stacked, narrowing cones) or a deciduous blob (one or two
+      // rounded masses near the top).
+      const g=new THREE.Group();
+      const trunkH=1.0+rng()*.6;
+      const trunk=new THREE.Mesh(DECOR_GEO.log,mat);
+      trunk.scale.set(.1,trunkH,.1);
+      trunk.position.y=trunkH*.5;
+      g.add(trunk);
+      if(rng()<.55){
+        const tiers=2+Math.floor(rng()*2);
+        let y=trunkH*.7;
+        for(let i=0;i<tiers;i++){
+          const cr=.46-i*.1+rng()*.06,ch=.5-i*.07+rng()*.08;
+          const c=new THREE.Mesh(DECOR_GEO.spike,mat);
+          c.scale.set(cr,ch,cr);
+          c.position.y=y+ch*.5;
+          g.add(c);
+          y+=ch*.55;
+        }
+      }else{
+        const blobs=1+Math.floor(rng()*2);
+        for(let i=0;i<blobs;i++){
+          const s=.34+rng()*.22;
+          const b=new THREE.Mesh(DECOR_GEO.rock,mat);
+          b.position.set((rng()-.5)*.3,trunkH+s*.45,(rng()-.5)*.3);
+          b.scale.setScalar(s);
+          g.add(b);
+        }
+      }
+      return g;
+    }
+    case 'frond':{
+      // A bent trunk with a fan of blade-like spikes at the top — reads as
+      // a palm, a reed cluster, or a strand of kelp depending on scale/tint.
+      const g=new THREE.Group();
+      const trunkH=.7+rng()*.5;
+      const trunk=new THREE.Mesh(DECOR_GEO.log,mat);
+      trunk.scale.set(.07,trunkH,.07);
+      trunk.rotation.z=(rng()-.5)*.35;
+      trunk.position.y=trunkH*.5;
+      g.add(trunk);
+      const fronds=4+Math.floor(rng()*3);
+      for(let i=0;i<fronds;i++){
+        const a=(i/fronds)*Math.PI*2+rng()*.3;
+        const f=new THREE.Mesh(DECOR_GEO.spike,mat);
+        f.scale.set(.06,.5+rng()*.3,.22+rng()*.08);
+        f.position.set(Math.sin(a)*.08,trunkH+.08,Math.cos(a)*.08);
+        f.rotation.x=Math.PI/2.3;
+        f.rotation.y=a;
+        g.add(f);
+      }
+      return g;
+    }
+    case 'coral':{
+      // A small cluster of thin branches at varied angles — reef coral,
+      // dead scrub, or alien growth depending on tint and placement.
+      const g=new THREE.Group();
+      const n=3+Math.floor(rng()*3);
+      for(let i=0;i<n;i++){
+        const h=.3+rng()*.5,r=.07+rng()*.06;
+        const b=new THREE.Mesh(DECOR_GEO.spike,mat);
+        b.scale.set(r,h,r);
+        b.position.set((rng()-.5)*.3,h*.3*rng(),(rng()-.5)*.3);
+        b.rotation.set((rng()-.5)*.7,rng()*6,(rng()-.5)*.7);
+        g.add(b);
+      }
+      return g;
+    }
+    case 'shard':{
+      // The 'crystal' octahedron stretched thin and tall instead of
+      // chunky — an ice spire or a glass splinter rather than a gem.
+      const r=.08+rng()*.06;
+      const m=new THREE.Mesh(DECOR_GEO.crystal,mat);
+      m.scale.set(r,.8+rng()*.9,r);
+      m.rotation.y=rng()*6;
+      return m;
+    }
+    case 'mushroom':{
+      const g=new THREE.Group();
+      const stemH=.16+rng()*.14;
+      const stem=new THREE.Mesh(DECOR_GEO.log,mat);
+      stem.scale.set(.045,stemH,.045);
+      stem.position.y=stemH*.5;
+      g.add(stem);
+      const capR=.13+rng()*.1;
+      const cap=new THREE.Mesh(DECOR_GEO.crystal,mat);
+      cap.scale.set(capR,capR*.45,capR);
+      cap.position.y=stemH+capR*.18;
+      g.add(cap);
+      return g;
+    }
+    case 'bush':{
+      const g=new THREE.Group();
+      const n=2+Math.floor(rng()*2);
+      for(let i=0;i<n;i++){
+        const m=new THREE.Mesh(DECOR_GEO.rock,mat);
+        const s=.2+rng()*.14;
+        m.position.set((rng()-.5)*.32,.09+rng()*.07,(rng()-.5)*.32);
+        m.scale.set(s,s*.55,s);
+        g.add(m);
+      }
+      return g;
+    }
+    case 'quadruped':{
+      // A generic low-poly quadruped rig (body/4 legs/head/tail) rather than
+      // a bespoke model per species — close enough at a glance, scattered
+      // at a count of one, to read as "a deer", "a fox", "a wild goat"
+      // depending on the biome's tint and scale, without needing a zoo of
+      // distinct rigs.
+      const g=new THREE.Group();
+      const scale=.75+rng()*.5;
+      const bodyLen=.55*scale,bodyR=.12*scale,legH=.3*scale,legR=.04*scale,halfW=.09*scale;
+      const body=new THREE.Mesh(DECOR_GEO.quadBody,mat);
+      body.scale.set(bodyR,bodyLen,bodyR);
+      body.rotation.z=Math.PI/2;body.position.y=legH;
+      g.add(body);
+      [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([lx,lz])=>{
+        const leg=new THREE.Mesh(DECOR_GEO.quadLeg,mat);
+        leg.scale.set(legR,legH,legR);
+        leg.position.set(lx*bodyLen*.32,legH/2,lz*halfW);
+        g.add(leg);
+      });
+      const head=new THREE.Mesh(DECOR_GEO.quadHead,mat);
+      head.scale.set(.15*scale,.13*scale,.2*scale);
+      head.position.set(bodyLen*.55,legH+.08*scale,0);
+      g.add(head);
+      const tail=new THREE.Mesh(DECOR_GEO.quadTail,mat);
+      tail.scale.set(.035*scale,.24*scale,.035*scale);
+      tail.rotation.z=Math.PI/2+.35;
+      tail.position.set(-bodyLen*.6,legH+.05*scale,0);
+      g.add(tail);
+      g.userData.sway=rng()*Math.PI*2;
+      return g;
+    }
+    default:{
+      const m=new THREE.Mesh(DECOR_GEO.rock,mat);
+      m.scale.setScalar(.18+rng()*.3);
+      return m;
+    }
+  }
+}
+const decorGroup=new THREE.Group();scene.add(decorGroup);
+const faunaGroups=[];
+let decorMat=null;
+let coralMats=[];
+function buildDecor(biome){
+  // Geometry is shared (DECOR_GEO, built once above) across every instance
+  // and every biome now, so clearing old decor only removes the meshes —
+  // it must NOT dispose their geometry, which other/future instances still
+  // reference. Only decorMat (below) is actually unique per biome.
+  while(decorGroup.children.length){
+    decorGroup.remove(decorGroup.children[0]);
+  }
+  faunaGroups.length=0;
+  if(decorMat)decorMat.dispose();
+  coralMats.forEach(m=>m.dispose());coralMats.length=0;
+  // map x color: the shared grayscale decorSplat texture supplies fine
+  // surface detail, biome.tint supplies the colour — one texture asset,
+  // every biome's own look, instead of a colour-baked texture per biome.
+  decorMat=new THREE.MeshStandardMaterial({color:biome.tint,map:decorSplat,roughness:.55});
+  // Real coral/reef structures are never one flat hue the way a single
+  // shared decorMat would render them — reef surveys consistently describe
+  // reefs as a mix of pinks, oranges, purples and yellows even within one
+  // patch, not a monochrome wash. A handful of hue/lightness-jittered
+  // clones around the biome's own tint gets that variety cheaply (coral
+  // instance counts are low) without needing a hand-authored palette per
+  // biome — Abyssal Deep's corals jitter around its dark blue tint while
+  // Coral Reef's jitter around its salmon one.
+  for(let i=0;i<6;i++){
+    const c=decorMat.clone();
+    c.color.offsetHSL((i/6-0.4)*0.22,0,(i%3-1)*0.1);
+    coralMats.push(c);
+  }
+  const types=(biome.decor&&biome.decor.length)?biome.decor:['rock'];
+  const rng=makeRNG(hashSeed(biome.id)); // same biome -> same layout, every time
+  types.forEach(type=>{
+    if(type==='quadruped'&&Q.faunaMul<=0)return; // potato tier: skip fauna entirely
+    const mul=type==='quadruped'?Q.faunaMul:Q.decorMul;
+    const n=Math.max(1,Math.round((DECOR_BASE_COUNT[type]||8)*biome.density*mul));
+    // Grounded composites (their own trunk/legs already start at local
+    // y=0 and build upward) sit directly at ground height, same as a
+    // centred single mesh like pillar/spike/ring whose vertical centring
+    // already reads fine half-embedded at the base.
+    const tall=type==='pillar'||type==='spike'||type==='ring'||type==='quadruped'||type==='tree'||type==='frond'||type==='mushroom';
+    // Floating-island biomes keep decor on a tighter ring: the platform
+    // under them is sized to this spread (see floatPlatform above), and a
+    // small island hugged closely by its own props reads better than a
+    // sprawling one anyway.
+    const rSpread=biome.groundless?5:10;
+    for(let i=0;i<n;i++){
+      const a=rng()*Math.PI*2,r=3+rng()*rSpread;
+      const x=Math.sin(a)*r,z=4+Math.cos(a)*r*0.7-2;
+      if(Math.abs(x)<1.4&&z<2&&z>-1)continue; // keep fire pit clear
+      const instMat=type==='coral'?coralMats[Math.floor(rng()*coralMats.length)]:decorMat;
+      const m=makeDecorMesh(type,instMat,rng);
+      m.traverse(c=>{if(c.isMesh){c.castShadow=true;c.receiveShadow=true;}});
+      // Ground height now actually varies (see uHeightAmp/terrainHeight), so
+      // props need to sit on it rather than at a fixed y=0 — otherwise a
+      // rise in the terrain buries them and a dip leaves them floating.
+      const gy=biome.groundless?platformHeight(x,z):terrainHeight(x,4-z);
+      if(type==='log'){
+        m.position.set(x,.15+gy,z);m.rotation.z=Math.PI/2+rng()*.4;m.rotation.y=rng()*6;
+      }else if(type==='ring'){
+        m.position.set(x,.4+rng()*.5+gy,z);m.rotation.x=rng()*6;m.rotation.y=rng()*6;
+      }else if(tall){
+        m.position.set(x,gy,z);m.rotation.y=rng()*6;
+      }else{
+        m.position.set(x,.12+gy,z);m.rotation.set(rng()*6,rng()*6,rng()*6);
+      }
+      if(type==='quadruped'){m.userData.baseRotY=m.rotation.y;faunaGroups.push(m);}
+      decorGroup.add(m);
+    }
+  });
+}
+
+// ── CAMPFIRE ─────────────────────────────────────────────────────────────────
+const firePos=new THREE.Vector3(0,0,6);
+const fireGrp=new THREE.Group();fireGrp.position.copy(firePos);scene.add(fireGrp);
+
+const stoneMat=new THREE.MeshStandardMaterial({color:0x3a3028,roughness:.6});
+for(let i=0;i<9;i++){
+  const a=(i/9)*Math.PI*2;
+  const m=new THREE.Mesh(new THREE.IcosahedronGeometry(.17+worldRng()*.06,0),stoneMat);
+  m.position.set(Math.sin(a)*.78,.1,Math.cos(a)*.78);
+  m.rotation.set(worldRng()*6,worldRng()*6,0);
+  m.castShadow=true;m.receiveShadow=true;
+  fireGrp.add(m);
+}
+const logMat=new THREE.MeshStandardMaterial({color:0x1a120c,roughness:1,emissive:0x000000});
+const logs=[];
+for(let i=0;i<5;i++){
+  const a=(i/5)*Math.PI*2+0.4;
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,1.1,6),logMat.clone());
+  m.position.set(Math.sin(a)*.12,.32,Math.cos(a)*.12);
+  m.rotation.set(Math.PI/2-.35,0,a);
+  m.castShadow=true;
+  fireGrp.add(m);logs.push(m);
+}
+
+// Flame — layered additive "tongues" + hot core, flicker-animated.
+const flameGrp=new THREE.Group();flameGrp.position.y=.42;fireGrp.add(flameGrp);
+const flameTongues=[];
+for(let i=0;i<4;i++){
+  const t=new THREE.Mesh(new THREE.ConeGeometry(.17,.62,7),new THREE.MeshBasicMaterial({color:0xff7722,transparent:true,opacity:.75,blending:THREE.AdditiveBlending,depthWrite:false}));
+  const a=(i/4)*Math.PI*2;
+  t.position.set(Math.sin(a)*.09,.3,Math.cos(a)*.09);
+  flameGrp.add(t);flameTongues.push(t);
+}
+const flameCore=new THREE.Mesh(new THREE.SphereGeometry(.16,10,8),new THREE.MeshBasicMaterial({color:0xfff7cc,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));
+flameCore.position.y=.18;flameGrp.add(flameCore);
+const flameGlow=new THREE.Mesh(new THREE.SphereGeometry(.9,10,8),new THREE.MeshBasicMaterial({color:0xff6622,transparent:true,opacity:.09,blending:THREE.AdditiveBlending,depthWrite:false}));
+flameGlow.position.y=.3;flameGrp.add(flameGlow);
+
+const fireLight=new THREE.PointLight(0xff8833,0,7);
+fireLight.position.set(0,.6,0);fireGrp.add(fireLight);
+
+// Embers
+const EMB_N=Math.max(8,Math.round(60*Q.embMul));
+const embPos=new Float32Array(EMB_N*3),embVel=new Float32Array(EMB_N*3),embAge=new Float32Array(EMB_N),embLife=new Float32Array(EMB_N);
+for(let i=0;i<EMB_N;i++){embPos[i*3+1]=-999;embAge[i]=1;}
+const embGeo=new THREE.BufferGeometry();const embAttr=new THREE.BufferAttribute(embPos,3);embGeo.setAttribute('position',embAttr);
+const embMat=new THREE.PointsMaterial({color:0xffcc88,size:.07,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true});
+const embPts=new THREE.Points(embGeo,embMat);embPts.position.copy(firePos);scene.add(embPts);
+function spawnEmb(i){
+  embPos[i*3]=(Math.random()-.5)*.3;
+  embPos[i*3+1]=.3+Math.random()*.3;
+  embPos[i*3+2]=(Math.random()-.5)*.3;
+  embVel[i*3]=(Math.random()-.5)*.1;
+  embVel[i*3+1]=.5+Math.random()*.7;
+  embVel[i*3+2]=(Math.random()-.5)*.1;
+  embLife[i]=1.0+Math.random()*1.1;embAge[i]=0;
+}
+
+// Smoke wisps
+const SMK_N=Math.max(4,Math.round(18*Q.smkMul));
+const smkPos=new Float32Array(SMK_N*3),smkAge=new Float32Array(SMK_N),smkLife=new Float32Array(SMK_N);
+for(let i=0;i<SMK_N;i++){smkPos[i*3+1]=-999;smkAge[i]=1;}
+const smkGeo=new THREE.BufferGeometry();const smkAttr=new THREE.BufferAttribute(smkPos,3);smkGeo.setAttribute('position',smkAttr);
+const smkMat=new THREE.PointsMaterial({color:0x887766,size:.5,transparent:true,opacity:0,depthWrite:false,sizeAttenuation:true});
+const smkPts=new THREE.Points(smkGeo,smkMat);smkPts.position.copy(firePos);scene.add(smkPts);
+function spawnSmk(i){
+  smkPos[i*3]=(Math.random()-.5)*.2;smkPos[i*3+1]=.8;smkPos[i*3+2]=(Math.random()-.5)*.2;
+  smkLife[i]=3+Math.random()*2;smkAge[i]=0;
+}
+
+// ── CLOUDS — low-poly puff clusters drifting across the sky ─────────────────
+// A fixed pool so density can be set later (randomly, or from real cloud
+// cover) just by toggling visibility rather than creating/disposing meshes.
+const CLOUD_N=Math.max(2,Math.round(10*Q.cloudMul));
+const cloudGroups=[];
+// Lambert, not Basic: clouds used to stay at the exact same flat brightness
+// day or night, lit or shaded, which is the "self-emissive" look the sun and
+// fire alone should justify. Lambert lets them actually darken at night and
+// pick up a bit of real shading from the sun's direction.
+// depthWrite:false matters more here than it would on an opaque material:
+// each puff is a low-poly, facet-edged sphere, several of which overlap per
+// cloud (and between neighbouring clouds). With depth writes on, every pair
+// of overlapping puffs hard-clips at their intersection — a sharp faceted
+// seam where one sphere visibly cuts into another. Without it they alpha-
+// blend over whatever's already drawn instead, so overlapping puffs melt
+// into one soft shape the way an actual cloud's overlapping lobes do.
+const cloudMat=new THREE.MeshLambertMaterial({color:0xffffff,transparent:true,opacity:.82,fog:true,depthWrite:false});
+// One shared unit puff geometry, scaled per-instance (including the
+// y-flatten) instead of a uniquely-sized geometry per puff.
+const cloudPuffGeo=new THREE.IcosahedronGeometry(1,0);
+for(let i=0;i<CLOUD_N;i++){
+  const grp=new THREE.Group();
+  const puffs=2+Math.floor(worldRng()*3);
+  for(let j=0;j<puffs;j++){
+    const r=2.4+worldRng()*2.6;
+    const m=new THREE.Mesh(cloudPuffGeo,cloudMat);
+    m.position.set((worldRng()-.5)*6.5,(worldRng()-.5)*1.4,(worldRng()-.5)*3.2);
+    m.scale.set(r,r*(.5+worldRng()*.22),r);
+    grp.add(m);
+  }
+  const a=worldRng()*Math.PI*2,r=90+worldRng()*180;
+  grp.position.set(Math.sin(a)*r,46+worldRng()*34,-Math.cos(a)*r-40);
+  grp.userData={driftSpeed:.6+worldRng()*1.0,driftDir:worldRng()<.5?1:-1};
+  grp.visible=worldRng()<.55; // a fixed initial field, until weather sets a density
+  scene.add(grp);
+  cloudGroups.push(grp);
+}
+function setCloudDensity(frac){
+  const n=Math.round(THREE.MathUtils.clamp(frac,0,1)*CLOUD_N);
+  const order=[...cloudGroups.keys()];
+  for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+  cloudGroups.forEach(g=>g.visible=false);
+  order.slice(0,n).forEach(i=>cloudGroups[i].visible=true);
+}
+function updateClouds(dt){
+  cloudGroups.forEach(g=>{
+    if(!g.visible)return;
+    g.position.x+=g.userData.driftDir*g.userData.driftSpeed*dt;
+    if(g.position.x>420)g.position.x=-420;else if(g.position.x<-420)g.position.x=420;
+  });
+}
+
+// ── GULLS — simple low-poly birds on loose circling flight paths ────────────
+const gullMat=new THREE.MeshLambertMaterial({color:0x2a251f});
+// Every gull is identically sized (no randomization), so body/wing geometry
+// is built once and shared by every instance below instead of once per gull.
+const gullBodyGeo=new THREE.ConeGeometry(.08,.5,5);
+const gullWingGeo=new THREE.BoxGeometry(.55,.02,.16);
+function makeGull(){
+  const grp=new THREE.Group();
+  const body=new THREE.Mesh(gullBodyGeo,gullMat);
+  body.rotation.x=Math.PI/2;grp.add(body);
+  const pivotL=new THREE.Group();grp.add(pivotL);
+  const wL=new THREE.Mesh(gullWingGeo,gullMat);wL.position.x=-.3;pivotL.add(wL);
+  const pivotR=new THREE.Group();grp.add(pivotR);
+  const wR=new THREE.Mesh(gullWingGeo,gullMat);wR.position.x=.3;pivotR.add(wR);
+  grp.userData={pivotL,pivotR};
+  return grp;
+}
+const GULL_N=Math.max(1,Math.round(4*Q.gullMul));
+const gulls=[];
+for(let i=0;i<GULL_N;i++){
+  const g=makeGull();
+  Object.assign(g.userData,{
+    radius:15+worldRng()*25,
+    height:8+worldRng()*12,
+    speed:.08+worldRng()*.08,
+    angle:worldRng()*Math.PI*2,
+    flapPhase:worldRng()*10,
+    flapRate:9+worldRng()*3,
+    centerZ:-20-worldRng()*70,
+  });
+  scene.add(g);gulls.push(g);
+}
+function updateGulls(el,dt){
+  gulls.forEach(g=>{
+    const u=g.userData;
+    u.angle+=u.speed*dt;
+    const x=Math.sin(u.angle)*u.radius;
+    const z=u.centerZ+Math.cos(u.angle)*u.radius*0.6;
+    g.position.set(x,u.height+Math.sin(el*.5+u.flapPhase)*1.5,z);
+    g.rotation.y=-u.angle;
+    const flap=Math.sin(el*u.flapRate+u.flapPhase)*.85;
+    u.pivotL.rotation.z=flap;
+    u.pivotR.rotation.z=-flap;
+  });
+}
+
+// A cheap idle sway (head turning to look around, a faint breathing bob) so
+// the sparse ground fauna reads as alive rather than a frozen lawn statue,
+// without any real animation rig.
+function updateFauna(el){
+  faunaGroups.forEach(g=>{
+    const ph=g.userData.sway;
+    g.rotation.y=g.userData.baseRotY+Math.sin(el*.3+ph)*.08;
+    g.position.y=Math.sin(el*.9+ph)*.004;
+  });
+}
+
+// ── AMBIENT PARTICLES — theme-driven atmosphere ──────────────────────────────
+// A generic looping particle layer (snow, spores, bubbles, ash, fireflies,
+// dust, pollen, leaves, sparks, bioluminescence, stardust, rain) seeded by
+// the active biome, independent of the campfire's own embers/smoke. Particles
+// recycle within a box around the seat so the layer always reads as present,
+// rather than being spawned/disposed per biome switch.
+const AMBIENT_MOTION={
+  snow:{dir:-1,drift:.5},rain:{dir:-1,drift:.05},leaves:{dir:-1,drift:.9},ash:{dir:-1,drift:.6},
+  dust:{dir:-1,drift:.4},pollen:{dir:0,drift:.7},
+  spores:{dir:0,drift:.6},fireflies:{dir:0,drift:.8},bioluminescence:{dir:0,drift:.5},
+  bubbles:{dir:1,drift:.3},stardust:{dir:0,drift:.3},sparks:{dir:1,drift:.5}
+};
+// Particles that are conceptually light-emitting on their own terms — living
+// glow, sparks, embers, starlight — keep additively brightening the scene and
+// stay at full strength regardless of hour, the same exception the campfire
+// and sun get. Everything else (dust, pollen, snow, spores, leaves, bubbles,
+// rain, ash) is just lit motes, not a light source: normal blending instead
+// of additive so they stop brightening whatever's behind them, and their
+// opacity now follows the same day/night curve the sun and sky do, so they
+// dim at night instead of floating there at an unchanging, faintly glowing
+// brightness no matter how dark the scene around them gets.
+const GLOW_PARTICLE_TYPES=new Set(['bioluminescence','fireflies','sparks','stardust','embers']);
+const AMB_MAX=260;
+// ambPos is the pure physics base (straight-line drift only); ambDisplay is
+// what's actually uploaded to the GPU each frame, base plus a per-particle
+// sinusoidal sway (see updateAmbientParticles) — kept separate so the sway
+// oscillates cleanly instead of randomly accumulating into the base drift.
+const ambPos=new Float32Array(AMB_MAX*3),ambVel=new Float32Array(AMB_MAX*3),ambPhase=new Float32Array(AMB_MAX);
+const ambDisplay=new Float32Array(AMB_MAX*3);
+const ambGeo=new THREE.BufferGeometry();const ambAttr=new THREE.BufferAttribute(ambDisplay,3);ambGeo.setAttribute('position',ambAttr);
+const ambMat=new THREE.PointsMaterial({color:0xffffff,size:.16,transparent:true,opacity:0,depthWrite:false,sizeAttenuation:true,blending:THREE.AdditiveBlending});
+const ambPts=new THREE.Points(ambGeo,ambMat);scene.add(ambPts);
+let ambCount=0,ambMotion={dir:0,drift:.5},ambSpeed=.5,ambSpread=40,ambIsGlow=false,ambBaseOpacity=0,ambSway=0;
+function spawnAmb(i,fresh,rng){
+  const R=rng||Math.random; // seeded for the initial per-biome layout, true-random on recycle
+  ambPos[i*3]=(R()-.5)*ambSpread;
+  ambPos[i*3+1]=fresh?R()*22:(ambMotion.dir<0?22:ambMotion.dir>0?.2:R()*22);
+  ambPos[i*3+2]=(R()-.5)*ambSpread-6;
+  ambVel[i*3]=(R()-.5)*ambMotion.drift;
+  ambVel[i*3+1]=ambMotion.dir*(.6+R()*.8)*ambSpeed;
+  ambVel[i*3+2]=(R()-.5)*ambMotion.drift;
+  ambPhase[i]=R()*Math.PI*2;
+}
+function buildAmbientParticles(biome){
+  const p=biome.particle||{count:0};
+  ambCount=Math.min(AMB_MAX,Math.round((p.count||0)*Q.particleMul));
+  ambMotion=AMBIENT_MOTION[p.type]||{dir:0,drift:.5};
+  ambSpeed=p.speed!==undefined?p.speed:.5;
+  ambSpread=p.spread!==undefined?p.spread:40;
+  // A gentle sinusoidal sway layered on top of the base drift (see
+  // updateAmbientParticles) scaled off each type's own existing drift
+  // figure, so light, flighty things (leaves, fireflies, pollen) swirl
+  // noticeably and heavy/fast ones (rain) barely waver — one atmosphere
+  // knob reused instead of a new per-type field.
+  ambSway=ambMotion.drift*.65;
+  ambMat.color.set(p.color!==undefined?p.color:0xffffff);
+  ambMat.size=(p.type==='bubbles'||p.type==='fireflies'||p.type==='bioluminescence'||p.type==='stardust')?.13:.19;
+  ambIsGlow=GLOW_PARTICLE_TYPES.has(p.type);
+  ambMat.blending=ambIsGlow?THREE.AdditiveBlending:THREE.NormalBlending;
+  const rng=makeRNG(hashSeed(biome.id+':particles')); // same biome -> same initial scatter
+  for(let i=0;i<AMB_MAX;i++){
+    if(i<ambCount)spawnAmb(i,true,rng);else ambPos[i*3+1]=-999;
+  }
+  ambDisplay.set(ambPos);
+  ambAttr.needsUpdate=true;
+  ambBaseOpacity=ambCount>0?.85:0;
+  ambMat.opacity=ambBaseOpacity;
+}
+function updateAmbientParticles(el,dt){
+  if(ambCount<=0)return;
+  for(let i=0;i<ambCount;i++){
+    ambPos[i*3]+=ambVel[i*3]*dt;ambPos[i*3+1]+=ambVel[i*3+1]*dt;ambPos[i*3+2]+=ambVel[i*3+2]*dt;
+    const y=ambPos[i*3+1],x=ambPos[i*3],z=ambPos[i*3+2];
+    const outY=(ambMotion.dir<0&&y<.2)||(ambMotion.dir>0&&y>22);
+    const outXZ=Math.abs(x)>ambSpread*.6||z<-ambSpread-6||z>ambSpread-6;
+    if(outY||outXZ)spawnAmb(i,false);
+    const ph=ambPhase[i];
+    ambDisplay[i*3]=ambPos[i*3]+Math.sin(el*.6+ph)*ambSway;
+    ambDisplay[i*3+1]=ambPos[i*3+1];
+    ambDisplay[i*3+2]=ambPos[i*3+2]+Math.cos(el*.5+ph)*ambSway;
+  }
+  ambAttr.needsUpdate=true;
+}
+
+// ── APPLY THEME ──────────────────────────────────────────────────────────────
+// Re-skins the already-built scene for a chosen biome: swaps the day/night
+// palette table, toggles the ocean plane and sand's wet/swash line, rebuilds
+// decor and ambient particles, and re-tints the HUD title with the realm's
+// name. Only callable pre-ignite — selection locks once the journey starts,
+// same as the session-length settings.
+function applyTheme(biome){
+  currentBiome=biome;
+  TOD_KEYS=buildTOD(biome);
+  updateTimeOfDay();
+  // Sky/ocean/sand colours normally approach PAL gradually (a 1.5%-per-frame
+  // lerp) so a chakra's influence fades in smoothly during a live journey.
+  // That same slow lerp made picking a biome in the entry screen look
+  // muddy: a quick browse through several cards left colours mid-transition
+  // from whichever was picked before, not the new biome's actual palette.
+  // Snap the base palette instantly here; the per-frame lerp in
+  // updateEnvironmentColors still handles the chakra blend on top of it.
+  skyU.uZenith.value.copy(PAL.zenith);
+  skyU.uHorizon.value.copy(PAL.horizon);
+  skyU.uSunColor.value.copy(PAL.sun);
+  oceanU.uDeep.value.copy(PAL.oceanDeep);
+  oceanU.uShallow.value.copy(PAL.oceanShallow);
+  sandU.uBase.value.copy(PAL.sandBase);
+  sandU.uWet.value.copy(PAL.sandWet);
+  ocean.visible=!!biome.water;
+  farGround.visible=!biome.water&&!biome.groundless; // the ocean plane already extends to the horizon when there's water
+  sand.visible=!biome.groundless;
+  floatPlatform.visible=!!biome.groundless;
+  skyU.uVoidBelow.value=biome.groundless?1:0;
+  sandU.uWetOn.value=biome.wetGround?1:0;
+  sandU.uShoreOn.value=biome.water?1:0;
+  // Real relief, not the flat plain this used to be — scaled down near any
+  // actual shoreline (real beaches/riverbanks read flatter, and a bigger
+  // bump there would fight the swash/wave visuals) and for floating-island
+  // biomes (the platform's own rim droop already does the shaping there).
+  // Capped at 0.3 for dry land: past that, props placed near the fire (at
+  // a fixed y assuming flat ground, corrected only by a coarse JS-side
+  // height sample) visibly part ways from the actual GPU-displaced surface
+  // under them, even inside the fire-clearing falloff below — 0.1→0.3 is
+  // still a real, visible improvement without that mismatch showing.
+  let heightAmp=0.3; // dry land: real relief
+  if(biome.groundless)heightAmp=0.1; // the platform's own rim droop does the shaping
+  else if(biome.water)heightAmp=0.12; // shorelines read flatter
+  else if(biome.wetGround)heightAmp=0.15;
+  sandU.uHeightAmp.value=heightAmp;
+  // Ground surface character, derived from each biome's own already-
+  // authored ground colour rather than a per-biome field: higher
+  // saturation reads as more textured rock/sand/canyon in this palette's
+  // conventions, so it gets a coarser, higher-contrast grain; pale,
+  // washed-out ground (snow, ice, mist, bone-white sand) smooths back
+  // out, and wet ground is always smoothed further (compacted sand/mud).
+  // Every biome ends up with its own surface instead of literally the
+  // same texture under a different base colour.
+  let grainScale=0.7+biome.ground.s*1.3,grainContrast=0.6+biome.ground.s*1.0;
+  if(biome.ground.l>0.7){grainScale*=0.6;grainContrast*=0.6;}
+  if(biome.wetGround)grainContrast*=0.7;
+  sandU.uGrainScale.value=grainScale;
+  sandU.uGrainContrast.value=grainContrast;
+  // The campfire sits at a fixed (x,z) but the ground under it now has
+  // real relief too — without this it would float or sink relative to
+  // whatever height that particular spot's noise happens to land on.
+  fireGrp.position.y=biome.groundless?platformHeight(firePos.x,firePos.z):terrainHeight(firePos.x,4-firePos.z);
+  // Fully-submerged biomes (open depth, not a shoreline) skip the
+  // shoreline colour-swap entirely — that blend was tuned for Coastal
+  // Shore's gentle tideline and otherwise just reads as mud on open water
+  // — pull the water a little closer to shrink the visible "dry beach"
+  // gap, and thicken the fog into real depth-murk instead of atmospheric haze.
+  oceanU.uColorSwapOn.value=biome.submerged?0:1;
+  ocean.position.z=biome.submerged?-197:-202;
+  scene.fog.density=biome.submerged?0.022:0.0062;
+  // ACES filmic tone mapping lifts shadows/midtones by design (that's what
+  // gives it its cinematic look) — it was fighting every other darkening
+  // knob above. Exposure is the one lever that actually darkens the whole
+  // rendered frame rather than getting lifted back up by the tonemap curve.
+  renderer.toneMappingExposure=biome.submerged?0.42:1.08;
+  if(biome.water)oceanU.uChakra.value.setHex(hslHex(biome.water.h,0.4,0.3));
+  buildDecor(biome);
+  buildAmbientParticles(biome);
+  document.getElementById('hTitle').textContent=biome.name.toUpperCase();
+  if(windNodes)windNodes.lp.frequency.setTargetAtTime(260+biome.windBrightness*760,actx.currentTime,1.5);
+}
+
+// ── STATE MACHINE ───────────────────────────────────────────────────────────
+let phase='prelude'; // prelude | igniting | journey | afterglow
+let chakraInfluence=0;
+let flameRamp=0,flameRampT=0;
+let fireLit=false;
+let stages=[],stageIdx=0,stageStartMs=0,stageDurMs=0;
+let sessionCfg={minutes:15,steps:5,dir:'asc'};
+let activeCK=CK[0];
+
+function buildStages(){
+  const order=sessionCfg.dir==='asc'?[0,1,2,3,4,5,6]:[6,5,4,3,2,1,0];
+  const n=sessionCfg.steps;
+  stages=[];
+  for(let i=0;i<n;i++){
+    const t=n===1?0:i/(n-1);
+    stages.push(order[Math.round(t*6)]);
+  }
+  stageDurMs=(sessionCfg.minutes*60000)/n;
+}
+
+function renderDots(){
+  const el=document.getElementById('dots');el.innerHTML='';
+  stages.forEach((ckIdx,i)=>{
+    const d=document.createElement('div');d.className='dot';d.style.color=CK[ckIdx].css;
+    el.appendChild(d);
+  });
+}
+function updateDotsState(){
+  const el=document.getElementById('dots');
+  [...el.children].forEach((d,i)=>{
+    d.classList.toggle('done',i<stageIdx);
+    d.classList.toggle('now',i===stageIdx);
+  });
+}
+function updateHUD(){
+  document.getElementById('hTitle').style.color=activeCK.css;
+  document.getElementById('hSub').textContent=`${activeCK.name.toUpperCase()} • ${activeCK.sk} • ${activeCK.el} • ${activeCK.freq}Hz`;
+  document.getElementById('hStage').textContent=stages.length?`Stage ${stageIdx+1} / ${stages.length} — Mantra ${activeCK.mantra}`:'';
+}
+
+function startStage(i){
+  stageIdx=i;activeCK=CK[stages[i]];
+  stageStartMs=performance.now();
+  updateHUD();updateDotsState();
+  if(toneNodes)rampTone(activeCK.freq);else startTone(activeCK.freq);
+  applyChakraAudio(activeCK,ISO_HZ[stages[i]]);
+  if(Bio.hapticsReady)hapticPulse(150,0.5,0.3);
+}
+
+function enterAfterglow(){
+  phase='afterglow';
+  stopTone();
+  flameRampT=.35;
+  document.getElementById('hSub').textContent='Rest in the afterglow.';
+  document.getElementById('hStage').textContent='The journey is complete.';
+  document.getElementById('again').classList.add('show');
+}
+
+function igniteFire(){
+  if(phase!=='prelude')return;
+  phase='igniting';
+  buildStages();renderDots();
+  document.getElementById('kindle').classList.add('hidden');
+  document.getElementById('panel').classList.add('locked');
+  fireLit=true;flameRampT=1;
+  logs.forEach(l=>l.material.emissive=new THREE.Color(0x441100));
+  iA();scheduleCrackle();
+  setTimeout(()=>{phase='journey';startStage(0);},2500);
+}
+
+document.getElementById('kindle').addEventListener('click',igniteFire);
+document.getElementById('again').addEventListener('click',()=>location.reload());
+
+// ── BIOME PICKER (entry screen) ──────────────────────────────────────────────
+let selectedBiomeId=currentBiome.id;
+function renderBiomeList(cat){
+  const list=document.getElementById('biomeList');
+  list.innerHTML='';
+  BIOMES.filter(b=>b.cat===cat).forEach(b=>{
+    const card=document.createElement('div');
+    card.className='biomeCard'+(b.id===selectedBiomeId?' sel':'');
+    card.textContent=b.name;
+    card.addEventListener('click',()=>{
+      selectedBiomeId=b.id;
+      [...list.children].forEach(c=>c.classList.remove('sel'));
+      card.classList.add('sel');
+      applyTheme(b);
+    });
+    list.appendChild(card);
+  });
+}
+// Dev Sandbox tab: only inserted when the page was opened with #dev in the
+// URL, so the 43rd realm stays invisible (and the tab row stays four wide)
+// for every normal visitor — this is for working on the app itself, not a
+// feature to discover by clicking around.
+if(location.hash==='#dev'){
+  const devTab=document.createElement('div');
+  devTab.className='biomeTab';
+  devTab.dataset.cat='dev';
+  devTab.textContent='Dev';
+  document.getElementById('biomeTabs').appendChild(devTab);
+}
+document.querySelectorAll('.biomeTab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.biomeTab').forEach(t=>t.classList.remove('sel'));
+    tab.classList.add('sel');
+    renderBiomeList(tab.dataset.cat);
+  });
+});
+renderBiomeList(document.querySelector('.biomeTab.sel').dataset.cat);
+
+// Settings panel wiring
+document.getElementById('gear').addEventListener('click',()=>document.getElementById('panel').classList.toggle('show'));
+document.querySelectorAll('#panel .opts[data-k]').forEach(group=>{
+  const key=group.dataset.k;
+  group.querySelectorAll('.opt').forEach(opt=>{
+    opt.addEventListener('click',()=>{
+      if(phase!=='prelude')return;
+      group.querySelectorAll('.opt').forEach(o=>o.classList.remove('sel'));
+      opt.classList.add('sel');
+      const v=opt.dataset.v;
+      sessionCfg[key]=(key==='dir')?v:Number.parseInt(v,10);
+    });
+  });
+});
+
+// Optional: real cloud cover for the user's own zip code, via two free,
+// keyless public APIs (zippopotam.us for zip->coordinates, open-meteo.com
+// for the current forecast). Nothing is sent unless the user types a zip
+// and taps "Use". Falls back to the existing random cloud cover on any
+// failure — including an environment that blocks this fetch outright.
+document.getElementById('useWeather').addEventListener('click',async()=>{
+  const zip=document.getElementById('zipIn').value.trim();
+  const statusEl=document.getElementById('weatherStatus');
+  if(!/^\d{5}$/.test(zip)){statusEl.textContent='Enter a 5-digit US zip.';return;}
+  statusEl.textContent='Checking the sky…';
+  try{
+    const geoRes=await fetch(`https://api.zippopotam.us/us/${zip}`);
+    if(!geoRes.ok)throw new Error('zip not found');
+    const geo=await geoRes.json();
+    const place=geo.places&&geo.places[0];
+    if(!place)throw new Error('no location for zip');
+    const wxRes=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=cloud_cover`);
+    if(!wxRes.ok)throw new Error('weather unavailable');
+    const wx=await wxRes.json();
+    const cover=wx.current&&typeof wx.current.cloud_cover==='number'?wx.current.cloud_cover:50;
+    setCloudDensity(cover/100);
+    statusEl.textContent=`${place['place name']}: ${Math.round(cover)}% cloud cover`;
+  }catch(err){
+    statusEl.textContent="Couldn't reach the weather service — showing random clouds.";
+  }
+});
+
+// ── AUDIO ENGINE ─────────────────────────────────────────────────────────────
+// Math.random() below drives generative noise/jitter only (buffers, flicker,
+// scheduling, panning) — never anything security-sensitive.
+let actx=null,masterGain=null,_mComp=null,sndOn=true;
+let windNodes=null,breezeNodes=null,toneNodes=null;
+let waveState={period:5.5};
+let firePanner=null,wavePanner=null;
+
+// Real binaural 3D audio — the browser-native equivalent of HRIR/Atmos-style
+// spatialization. Web Audio's PannerNode with panningModel:'HRTF' convolves
+// each source against a built-in head-related impulse response, so the fire
+// crackle and the ocean swell genuinely localize in the direction you're
+// facing; the AudioListener is updated from the camera every frame (see
+// updateAudioListener below), so turning your head in VR re-pans them live.
+// True OS-level surround drivers (Dolby Atmos, Windows Sonic, Razer
+// Surround) aren't reachable from a webpage at all — this is the real,
+// in-browser equivalent, not an imitation of those.
+function makePanner(pos){
+  const p=actx.createPanner();
+  p.panningModel='HRTF';p.distanceModel='inverse';
+  p.refDistance=3;p.maxDistance=250;p.rolloffFactor=1;
+  if(p.positionX){p.positionX.value=pos.x;p.positionY.value=pos.y;p.positionZ.value=pos.z;}
+  else if(p.setPosition)p.setPosition(pos.x,pos.y,pos.z);
+  return p;
+}
+function updateAudioListener(){
+  if(!actx)return;
+  const L=actx.listener,p=cam.position;
+  const fwd=new THREE.Vector3();cam.getWorldDirection(fwd);
+  const up=cam.up;
+  if(L.positionX){
+    L.positionX.value=p.x;L.positionY.value=p.y;L.positionZ.value=p.z;
+    L.forwardX.value=fwd.x;L.forwardY.value=fwd.y;L.forwardZ.value=fwd.z;
+    L.upX.value=up.x;L.upY.value=up.y;L.upZ.value=up.z;
+  }else if(L.setPosition){
+    L.setPosition(p.x,p.y,p.z);
+    L.setOrientation(fwd.x,fwd.y,fwd.z,up.x,up.y,up.z);
+  }
+}
+
+function iA(){
+  if(actx)return;
+  actx=new (AudioContext||webkitAudioContext)();
+  _mComp=actx.createDynamicsCompressor();
+  _mComp.threshold.value=-18;_mComp.knee.value=8;_mComp.ratio.value=8;_mComp.attack.value=.004;_mComp.release.value=.3;
+  masterGain=actx.createGain();masterGain.gain.value=1;
+  _mComp.connect(masterGain);masterGain.connect(actx.destination);
+  firePanner=makePanner(firePos);firePanner.connect(_mComp);
+  wavePanner=makePanner({x:0,y:0,z:-80}); // out toward the sea, wherever this biome's shoreline sits
+  wavePanner.connect(_mComp);
+  startWind();startBreeze();scheduleWave();
+}
+
+function makeNoiseBuffer(seconds){
+  const sr=actx.sampleRate,len=Math.floor(sr*seconds);
+  const buf=actx.createBuffer(2,len,sr);
+  for(let c=0;c<2;c++){
+    const d=buf.getChannelData(c);let b=0,peak=0;
+    for(let i=0;i<len;i++){b=b*0.96+(Math.random()*2-1)*0.04;d[i]=b;peak=Math.max(peak,Math.abs(b));}
+    if(peak>0){const sc=.9/peak;for(let i=0;i<len;i++)d[i]*=sc;}
+  }
+  return buf;
+}
+
+// Wind gusts: a random walk nudges the gain toward a new target every few
+// seconds so the wind never settles into an audibly fixed cycle.
+function scheduleGust(){
+  if(!windNodes)return;
+  const t=actx.currentTime;
+  const base=windNodes.baseGain!==undefined?windNodes.baseGain:.05;
+  const target=base*(0.55+Math.random()*0.9);
+  windNodes.g.gain.cancelScheduledValues(t);
+  windNodes.g.gain.setValueAtTime(windNodes.g.gain.value,t);
+  windNodes.g.gain.linearRampToValueAtTime(target,t+1.5+Math.random()*2.5);
+  setTimeout(scheduleGust,3000+Math.random()*6000);
+}
+
+function startWind(){
+  const src=actx.createBufferSource();src.buffer=makeNoiseBuffer(14);src.loop=true;
+  const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=260+currentBiome.windBrightness*760;lp.Q.value=.5;
+  const g=actx.createGain();g.gain.value=0;g.gain.linearRampToValueAtTime(.05,actx.currentTime+3);
+  // Two incommensurate LFOs on the cutoff so gusting never repeats on a
+  // single predictable period.
+  const lfo=actx.createOscillator();lfo.frequency.value=.08;
+  const lfoGain=actx.createGain();lfoGain.gain.value=100;
+  lfo.connect(lfoGain);lfoGain.connect(lp.frequency);lfo.start();
+  const lfo2=actx.createOscillator();lfo2.frequency.value=.027;
+  const lfo2Gain=actx.createGain();lfo2Gain.gain.value=70;
+  lfo2.connect(lfo2Gain);lfo2Gain.connect(lp.frequency);lfo2.start();
+  const pan=actx.createStereoPanner();
+  const panLfo=actx.createOscillator();panLfo.frequency.value=.047;
+  const panLfoGain=actx.createGain();panLfoGain.gain.value=.5;
+  panLfo.connect(panLfoGain);panLfoGain.connect(pan.pan);panLfo.start();
+  src.connect(lp);lp.connect(g);g.connect(pan);pan.connect(_mComp);
+  src.start();
+  windNodes={src,lp,g,lfo,lfoGain,lfo2,lfo2Gain,pan,panLfo,baseGain:.05};
+  scheduleGust();
+}
+
+function startBreeze(){
+  const src=actx.createBufferSource();src.buffer=makeNoiseBuffer(11);src.loop=true;
+  const hp=actx.createBiquadFilter();hp.type='highpass';hp.frequency.value=1800;
+  const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=5200;
+  const g=actx.createGain();g.gain.value=0;g.gain.linearRampToValueAtTime(.018,actx.currentTime+4);
+  const lfo=actx.createOscillator();lfo.frequency.value=.22;
+  const lfoGain=actx.createGain();lfoGain.gain.value=.009;
+  lfo.connect(lfoGain);lfoGain.connect(g.gain);lfo.start();
+  const lfo2=actx.createOscillator();lfo2.frequency.value=.083;
+  const lfo2Gain=actx.createGain();lfo2Gain.gain.value=.006;
+  lfo2.connect(lfo2Gain);lfo2Gain.connect(g.gain);lfo2.start();
+  src.connect(hp);hp.connect(lp);lp.connect(g);g.connect(_mComp);
+  src.start();
+  breezeNodes={src,hp,lp,g,lfo,lfoGain,lfo2,lfo2Gain};
+}
+
+function curChakraFreqNorm(){return (activeCK.freq-396)/(963-396);}
+
+function scheduleWave(){
+  if(!actx||!currentBiome.water)return;
+  const t=actx.currentTime,dur=waveState.period;
+  const src=actx.createBufferSource();src.buffer=makeNoiseBuffer(3);
+  const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=420;
+  const g=actx.createGain();g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(.09,t+dur*.55);
+  g.gain.linearRampToValueAtTime(.0001,t+dur*1.05);
+  src.connect(lp);lp.connect(g);g.connect(wavePanner);
+  src.start(t);src.stop(t+dur*1.1);
+
+  const sprayDelay=dur*.52;
+  const sSrc=actx.createBufferSource();sSrc.buffer=makeNoiseBuffer(1);
+  const hp=actx.createBiquadFilter();hp.type='highpass';hp.frequency.value=2200+curChakraFreqNorm()*2400;
+  const sg=actx.createGain();sg.gain.setValueAtTime(0,t+sprayDelay);
+  sg.gain.linearRampToValueAtTime(.045,t+sprayDelay+.08);
+  sg.gain.linearRampToValueAtTime(.0001,t+sprayDelay+.5);
+  const sp=actx.createStereoPanner();sp.pan.value=(Math.random()*2-1)*.7;
+  sSrc.connect(hp);hp.connect(sg);sg.connect(sp);sp.connect(wavePanner);
+  sSrc.start(t+sprayDelay);sSrc.stop(t+sprayDelay+.6);
+
+  setTimeout(scheduleWave,dur*1000*(.92+Math.random()*.16));
+}
+
+function applyChakraAudio(ck,isoHz){
+  const norm=(ck.freq-396)/(963-396);
+  const t=actx.currentTime;
+  if(windNodes){
+    windNodes.lp.frequency.cancelScheduledValues(t);
+    windNodes.lp.frequency.setTargetAtTime(380+norm*620,t,1.2);
+    windNodes.lfoGain.gain.setTargetAtTime(90+norm*120,t,1.2);
+  }
+  if(breezeNodes){
+    breezeNodes.hp.frequency.cancelScheduledValues(t);
+    breezeNodes.hp.frequency.setTargetAtTime(1400+norm*1800,t,1.2);
+  }
+  waveState.period=7.2-(isoHz/40)*3.4;
+}
+
+function startTone(freq){
+  const t=actx.currentTime;
+  const sol=actx.createOscillator();sol.type='sine';sol.frequency.value=freq;
+  const solG=actx.createGain();solG.gain.setValueAtTime(0,t);solG.gain.linearRampToValueAtTime(.02,t+3);
+  const sub=actx.createOscillator();sub.type='sine';sub.frequency.value=freq*.5;
+  const subG=actx.createGain();subG.gain.setValueAtTime(0,t);subG.gain.linearRampToValueAtTime(.009,t+3.5);
+  sol.connect(solG);solG.connect(_mComp);sol.start();
+  sub.connect(subG);subG.connect(_mComp);sub.start();
+  toneNodes={sol,solG,sub,subG};
+}
+function rampTone(freq){
+  if(!toneNodes)return;
+  const t=actx.currentTime;
+  toneNodes.sol.frequency.cancelScheduledValues(t);toneNodes.sol.frequency.setTargetAtTime(freq,t,1.4);
+  toneNodes.sub.frequency.cancelScheduledValues(t);toneNodes.sub.frequency.setTargetAtTime(freq*.5,t,1.4);
+  toneNodes.solG.gain.cancelScheduledValues(t);
+  toneNodes.solG.gain.setValueAtTime(toneNodes.solG.gain.value,t);
+  toneNodes.solG.gain.linearRampToValueAtTime(.034,t+.5);
+  toneNodes.solG.gain.linearRampToValueAtTime(.02,t+2.2);
+}
+function stopTone(){
+  if(!toneNodes)return;
+  const t=actx.currentTime,tn=toneNodes;
+  tn.solG.gain.linearRampToValueAtTime(0,t+2);
+  tn.subG.gain.linearRampToValueAtTime(0,t+2);
+  // .stop() on an already-stopped oscillator throws; harmless if a new
+  // tone was started (and these nodes replaced) before this timeout fires.
+  setTimeout(()=>{try{tn.sol.stop();tn.sub.stop()}catch(e){}},2100);
+  toneNodes=null;
+}
+
+function scheduleCrackle(){
+  if(!actx||!fireLit)return;
+  const t=actx.currentTime;
+  const src=actx.createBufferSource();src.buffer=makeNoiseBuffer(.3);
+  const bp=actx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=800+Math.random()*2200;bp.Q.value=3;
+  const g=actx.createGain();g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(.03+Math.random()*.03,t+.01);
+  g.gain.exponentialRampToValueAtTime(.001,t+.08+Math.random()*.1);
+  src.connect(bp);bp.connect(g);g.connect(firePanner);
+  src.start(t);src.stop(t+.25);
+  setTimeout(scheduleCrackle,140+Math.random()*420);
+}
+
+document.getElementById('snd').addEventListener('click',()=>{
+  sndOn=!sndOn;const b=document.getElementById('snd');
+  b.innerHTML=sndOn?'&#9834;':'&#9835;';b.classList.toggle('on',sndOn);
+  if(masterGain)masterGain.gain.linearRampToValueAtTime(sndOn?1:0,actx.currentTime+.6);
+  if(actx&&actx.state==='suspended')actx.resume();
+});
+
+// ── VR (WebXR) — optional head-tracked viewing ───────────────────────────────
+// Feature-detected: the button only appears on a device/browser that reports
+// immersive-vr support. Three.js's XR camera takes over orientation from the
+// seated `cam` once a session is active (see the `renderer.xr.isPresenting`
+// check in the animate loop above), so the headset's own head tracking drives
+// looking around instead of the mouse/touch drag controls.
+const vrBtn=document.getElementById('vrBtn');
+if(navigator.xr&&navigator.xr.isSessionSupported){
+  navigator.xr.isSessionSupported('immersive-vr').then(ok=>{if(ok)vrBtn.classList.add('show');}).catch(()=>{});
+}
+vrBtn.addEventListener('click',async()=>{
+  if(renderer.xr.isPresenting)return;
+  try{
+    iA();if(actx.state==='suspended')actx.resume();
+    cam.position.copy(SEAT);
+    const session=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor']});
+    await renderer.xr.setSession(session);
+    session.addEventListener('end',()=>vrBtn.classList.remove('on'));
+    vrBtn.classList.add('on');
+  }catch(err){console.error('WebXR session failed to start',err);}
+});
+
+// ── BIO INTERFACE (experimental) ─────────────────────────────────────────────
+// Stubs for next-level biofeedback input. Heart rate and pulse oximetry use
+// real, standard Web Bluetooth GATT services, genuinely connectable to real
+// hardware wherever Web Bluetooth is available. There's no universal
+// Bluetooth (or any browser) standard for consumer BCI/EEG headsets or
+// biohaptic suits, so those two are wired as clearly-labelled stubs instead:
+// BCI runs a simulated signal so the integration point is visible without
+// hardware, and haptics drives whatever real output the browser can already
+// reach (a gamepad's rumble motors, or a phone's vibration motor).
+const Bio={hr:null,spo2:null,eeg:null,hapticsReady:false};
+function bioText(id,text){const el=document.getElementById(id);if(el)el.textContent=text;}
+
+document.getElementById('bioBtn').addEventListener('click',()=>{
+  document.getElementById('bioBtn').classList.toggle('on');
+  document.getElementById('bioPanel').classList.toggle('show');
+});
+
+function hapticPulse(duration,strong,weak){
+  const pads=navigator.getGamepads?navigator.getGamepads():[];
+  const pad=pads&&[...pads].find(p=>p&&p.vibrationActuator);
+  if(pad){pad.vibrationActuator.playEffect('dual-rumble',{duration,strongMagnitude:strong,weakMagnitude:weak});return true;}
+  if(navigator.vibrate){navigator.vibrate(duration);return true;}
+  return false;
+}
+
+// Heart Rate — Bluetooth SIG "Heart Rate" GATT service (0x180D).
+document.getElementById('hrBtn').addEventListener('click',async()=>{
+  if(!navigator.bluetooth){bioText('hrStatus',"Web Bluetooth isn't available in this browser.");return;}
+  try{
+    bioText('hrStatus','Choose a device…');
+    const device=await navigator.bluetooth.requestDevice({filters:[{services:['heart_rate']}]});
+    const server=await device.gatt.connect();
+    const service=await server.getPrimaryService('heart_rate');
+    const char=await service.getCharacteristic('heart_rate_measurement');
+    await char.startNotifications();
+    char.addEventListener('characteristicvaluechanged',e=>{
+      const v=e.target.value,flags=v.getUint8(0);
+      Bio.hr=(flags&0x1)?v.getUint16(1,true):v.getUint8(1);
+      bioText('hrVal',Bio.hr+' bpm');
+    });
+    bioText('hrStatus','Connected to '+(device.name||'a heart-rate monitor')+'.');
+    const btn=document.getElementById('hrBtn');btn.classList.add('active');btn.textContent='Connected';
+  }catch(err){
+    bioText('hrStatus',err&&err.name==='NotFoundError'?'No device chosen.':'Could not connect: '+(err&&err.message?err.message:err));
+  }
+});
+
+// IEEE-11073 16-bit SFLOAT decoder (4-bit exponent + 12-bit mantissa,
+// both two's-complement) — the encoding Bluetooth health devices use for
+// measurement values, including the pulse-oximeter characteristic below.
+function parseSFLOAT(raw){
+  let mantissa=raw&0x0FFF,exponent=(raw>>12)&0xF;
+  if(exponent>=8)exponent-=16;
+  if(mantissa>=0x0800)mantissa-=0x1000;
+  return mantissa*Math.pow(10,exponent);
+}
+// Pulse Oximeter — Bluetooth SIG "Pulse Oximeter" GATT service (0x1822),
+// "PLX Continuous Measurement" characteristic (0x2A5F).
+document.getElementById('spo2Btn').addEventListener('click',async()=>{
+  if(!navigator.bluetooth){bioText('spo2Status',"Web Bluetooth isn't available in this browser.");return;}
+  try{
+    bioText('spo2Status','Choose a device…');
+    const device=await navigator.bluetooth.requestDevice({filters:[{services:[0x1822]}]});
+    const server=await device.gatt.connect();
+    const service=await server.getPrimaryService(0x1822);
+    const char=await service.getCharacteristic(0x2a5f);
+    await char.startNotifications();
+    char.addEventListener('characteristicvaluechanged',e=>{
+      const v=e.target.value;
+      Bio.spo2=parseSFLOAT(v.getUint16(1,true));
+      bioText('spo2Val',Math.round(Bio.spo2)+'%');
+    });
+    bioText('spo2Status','Connected to '+(device.name||'a pulse oximeter')+'.');
+    const btn=document.getElementById('spo2Btn');btn.classList.add('active');btn.textContent='Connected';
+  }catch(err){
+    bioText('spo2Status',err&&err.name==='NotFoundError'?'No device chosen.':'Could not connect: '+(err&&err.message?err.message:err));
+  }
+});
+
+// BCI / EEG stub — simulates a slow alpha/theta-like signal so the
+// integration point, and what you'd DO with real EEG data, is visible
+// without hardware; swap this interval for a real device SDK's data
+// callback to go live.
+let bciTimer=null;
+document.getElementById('bciBtn').addEventListener('click',()=>{
+  const btn=document.getElementById('bciBtn');
+  if(bciTimer){
+    clearInterval(bciTimer);bciTimer=null;Bio.eeg=null;
+    btn.classList.remove('active');btn.textContent='Simulate';
+    bioText('bciVal','—');
+    bioText('bciStatus','No universal Bluetooth BCI standard exists yet — this is a wiring point for a vendor SDK (Muse, Emotiv, OpenBCI). Demo feeds a simulated signal instead.');
+    return;
+  }
+  let t=0;
+  bciTimer=setInterval(()=>{
+    t+=0.5;
+    Bio.eeg={alpha:.5+.5*Math.sin(t*0.3),theta:.5+.5*Math.sin(t*0.21+2)};
+    bioText('bciVal','α '+Bio.eeg.alpha.toFixed(2)+' θ '+Bio.eeg.theta.toFixed(2));
+  },500);
+  btn.classList.add('active');btn.textContent='Stop';
+  bioText('bciStatus',"Simulated signal running — wire a real EEG SDK's callback into Bio.eeg here.");
+});
+
+// Haptics — real output wherever the browser can reach it (a gamepad's
+// rumble motors, or a phone's vibration motor); no universal "biohaptic
+// suit" web API exists yet.
+document.getElementById('hapticBtn').addEventListener('click',()=>{
+  const ok=hapticPulse(220,0.7,0.4);
+  Bio.hapticsReady=ok;
+  bioText('hapticStatus',ok?'Pulsed — stage transitions will tick this too.':'No haptic output available on this device/browser.');
+});
+
+// Begin — first user gesture starts audio (browser autoplay policy). The
+// chosen biome was already applied live as the user tapped through the
+// picker, so Begin only needs to dismiss the overlay and start sound.
+document.getElementById('beginBtn').addEventListener('click',()=>{
+  iA();
+  if(actx.state==='suspended')actx.resume();
+  document.getElementById('enter').classList.add('out');
+});
+
+// ── ANIMATE LOOP ─────────────────────────────────────────────────────────────
+const _tmp=new THREE.Color();
+let lastT=performance.now();
+
+// Sun position/colour follow the real time of day continuously (see
+// TIME OF DAY above), not a fixed arc tied to session length.
+function updateSun(now,el){
+  updateTimeOfDay();
+  skyU.uSunDir.value.set(.18,PAL.sh,-1).normalize();
+  // Fade the sun disc/glow out below the horizon instead of popping. Real
+  // sunlight doesn't reach a submerged biome's depth, so those get a fixed,
+  // steep dimming on top of the normal day/night curve — not just dimmer
+  // colours, the sun itself barely shows and never brightens past a dim glow.
+  const depthDim=currentBiome.submerged?0.15:1.0;
+  const sunVisibility=THREE.MathUtils.clamp(PAL.sh*6+.3,0,1)*depthDim;
+  skyU.uSunColor.value.copy(PAL.sun).multiplyScalar(.4+sunVisibility*.6);
+  sunLight.position.copy(skyU.uSunDir.value).multiplyScalar(100);
+  sunLight.color.copy(PAL.sun);
+  sunLight.intensity=(.3+sunVisibility*.95)*(currentBiome.submerged?0.5:1);
+  // Ambient/hemisphere fill light is otherwise constant regardless of biome —
+  // without dimming it too, a dark submerged albedo still reads surprisingly
+  // bright under full ambient fill, undercutting the depth-dimming above.
+  const ambMul=currentBiome.submerged?0.45:1;
+  ambL.intensity=.55*ambMul;
+  hemiL.intensity=.6*ambMul;
+  sunDisc.position.copy(skyU.uSunDir.value).multiplyScalar(260);
+  sunDisc.lookAt(cam.position);
+  sunDisc.material.opacity=.95*sunVisibility;
+  sunHalo.position.copy(sunDisc.position);
+  sunHalo.lookAt(cam.position);
+  sunHalo.material.opacity=.22*sunVisibility;
+  // Stars fade in on the same curve the sun fades out on — one night/day
+  // signal instead of a second model of its own — and stay dim underwater,
+  // where there's no clear sky to see them in regardless of the hour.
+  starsMat.opacity=(1-THREE.MathUtils.clamp(PAL.sh*6+.3,0,1))*0.85*(currentBiome.submerged?0.1:1);
+  // Non-glow ambient particles (dust, pollen, snow, ...) are lit motes, not
+  // a light source — they should dim at night like anything else the sun
+  // and fire aren't currently lighting, not sit at a flat, faintly glowing
+  // brightness regardless of the hour. Glow types (fireflies, sparks, ...)
+  // are the deliberate exception, same as the campfire itself.
+  if(ambCount>0)ambMat.opacity=ambBaseOpacity*(ambIsGlow?1:(0.35+sunVisibility*0.65));
+  cloudMat.color.copy(PAL.sun).lerp(_todB.set(0xffffff),.55);
+  // Fog reads as the biome's own murk/haze — deep water's own deep colour
+  // when submerged (so depth feels like it surrounds you), the sky's
+  // horizon tone otherwise (already day/night and chakra reactive). This
+  // must match the sky dome's OWN flat colour at and below the geometric
+  // horizon (pure uHorizon, see the sky fragment shader's h falloff) —
+  // any zenith blend here used to leave a visible pale seam right where
+  // the fogged-out ground met the sky, misread as a strip of distant water.
+  scene.fog.color.copy(currentBiome.submerged?PAL.oceanDeep:PAL.horizon);
+  skyU.uTime.value=el;
+  oceanU.uTime.value=el;
+  sandU.uTime.value=el;
+}
+
+function updateStageProgression(now,dt){
+  if(phase==='journey'&&now-stageStartMs>stageDurMs){
+    if(stageIdx+1<stages.length)startStage(stageIdx+1);else enterAfterglow();
+  }
+  if(phase==='igniting'||phase==='journey'||phase==='afterglow'){
+    chakraInfluence=Math.min(1,chakraInfluence+dt*.5);
+  }
+}
+
+// Colour blending — environment leans toward the chakra COMPLEMENT,
+// the fire itself carries the pure chakra hue.
+function updateEnvironmentColors(chHue,chComp,ci){
+  _tmp.copy(new THREE.Color(PAL.zenith)).lerp(chComp,ci*.55);
+  skyU.uZenith.value.lerp(_tmp,.015);
+  _tmp.copy(new THREE.Color(PAL.horizon)).lerp(chHue,ci*.6);
+  skyU.uHorizon.value.lerp(_tmp,.015);
+  _tmp.copy(new THREE.Color(PAL.oceanDeep)).lerp(chComp,ci*.5);
+  oceanU.uDeep.value.lerp(_tmp,.015);
+  _tmp.copy(new THREE.Color(PAL.oceanShallow)).lerp(chHue,ci*.45);
+  oceanU.uShallow.value.lerp(_tmp,.015);
+  // Both of these used to drift toward the active chakra's hue unconditionally,
+  // every frame, regardless of chakraInfluence — so the ocean/fire-glow tint
+  // would quietly creep toward red (Root, the default activeCK) just from
+  // sitting on the prelude screen, well before any fire was lit. Scaling the
+  // lerp rate by ci fixes that: zero drift pre-ignite, same convergence as
+  // before once the chakra journey is actually underway.
+  oceanU.uChakra.value.lerp(chHue,.02*ci);
+  _tmp.copy(new THREE.Color(PAL.sandBase)).lerp(chHue,ci*.3);
+  sandU.uBase.value.lerp(_tmp,.015);
+  _tmp.copy(new THREE.Color(PAL.sandWet)).lerp(chComp,ci*.35);
+  sandU.uWet.value.lerp(_tmp,.015);
+  oceanU.uSandWet.value.lerp(_tmp,.015);
+  sandU.uGlow.value.lerp(chHue,.04*ci);
+}
+
+function updateFire(chHue,el,dt){
+  flameRamp+=(flameRampT-flameRamp)*dt*.6;
+  // A connected heart-rate monitor subtly paces the fire's breathing — a
+  // gentle brightness pulse synced to the real heartbeat, on top of its
+  // own natural flicker, not a replacement for it.
+  const hrPulse=Bio.hr?0.08*Math.sin(el*2*Math.PI*(Bio.hr/60)):0;
+  const ramp=flameRamp*(1+hrPulse);
+  const fl=(seed)=>.75+.25*Math.sin(el*5.3+seed)+.12*Math.sin(el*11.7+seed*2.1)+.06*(Math.random()-.5);
+  flameTongues.forEach((t,i)=>{
+    const f=fl(i*1.7);
+    t.scale.set(ramp,ramp*f,ramp);
+    t.material.opacity=.75*ramp*f;
+    t.material.color.lerp(chHue,.03);
+  });
+  flameCore.scale.setScalar(ramp*fl(9));
+  flameGlow.scale.setScalar(ramp*(1+fl(3)*.3));
+  flameGlow.material.color.lerp(chHue,.03);
+  fireLight.intensity=ramp*(2.2+fl(5)*1.1);
+  fireLight.color.lerp(chHue,.04);
+  sandU.uFireI.value=flameRamp;
+  logs.forEach(l=>{if(l.material.emissive)l.material.emissive.lerp(chHue.clone().multiplyScalar(.25*flameRamp),.02)});
+}
+
+function updateEmbers(chHue,dt){
+  if(flameRamp>.15){
+    for(let i=0;i<EMB_N;i++){
+      if(embAge[i]>=1&&Math.random()<flameRamp*.18)spawnEmb(i);
+    }
+  }
+  for(let i=0;i<EMB_N;i++){
+    if(embAge[i]>=1)continue;
+    embAge[i]+=dt/embLife[i];
+    embPos[i*3]+=embVel[i*3]*dt;embPos[i*3+1]+=embVel[i*3+1]*dt;embPos[i*3+2]+=embVel[i*3+2]*dt;
+    embVel[i*3+1]+=dt*.08;
+    if(embAge[i]>=1)embPos[i*3+1]=-999;
+  }
+  embAttr.needsUpdate=true;
+  embMat.opacity=Math.min(.85,flameRamp)*.8;
+  embMat.color.lerp(new THREE.Color(0xffffff).lerp(chHue,.6),.03);
+}
+
+function updateSmoke(el,dt){
+  if(flameRamp>.1){
+    for(let i=0;i<SMK_N;i++){if(smkAge[i]>=1&&Math.random()<flameRamp*.03)spawnSmk(i);}
+  }
+  for(let i=0;i<SMK_N;i++){
+    if(smkAge[i]>=1)continue;
+    smkAge[i]+=dt/smkLife[i];
+    smkPos[i*3+1]+=dt*.35;smkPos[i*3]+=Math.sin(el+i)*dt*.06;smkPos[i*3+2]+=Math.cos(el*.8+i)*dt*.06;
+    if(smkAge[i]>=1)smkPos[i*3+1]=-999;
+  }
+  smkAttr.needsUpdate=true;
+  smkMat.opacity=Math.min(.22,flameRamp*.25)*(1);
+}
+
+// Live performance watchdog: the tier chosen from device heuristics above
+// is only ever a starting guess, so this steps quality DOWN (one-way, never
+// back up — avoids visible flicker/thrashing) if measured frame time says
+// the device can't actually sustain it. Order matters: shed the post-process
+// composite pass first (cheapest to lose visually), then shadows, then
+// resolution itself, down to a 0.75 pixel-ratio floor.
+let curPR=PR,qDowngrades=0;
+function degradeQuality(){
+  if(qDowngrades===0&&Q.composite){Q.composite=false;qDowngrades=1;return;}
+  if(qDowngrades===1){if(renderer.shadowMap.enabled)renderer.shadowMap.enabled=false;qDowngrades=2;return;}
+  if(qDowngrades<6&&curPR>0.75){
+    curPR=Math.max(.75,curPR-.25);renderer.setPixelRatio(curPR);qDowngrades++;
+  }
+}
+let fpsAccum=0,fpsFrames=0,fpsCheckAt=performance.now()+4000; // skip startup jank
+function monitorPerf(now,dt){
+  fpsAccum+=dt;fpsFrames++;
+  if(now<fpsCheckAt)return;
+  const avgFrameMs=(fpsAccum/fpsFrames)*1000;
+  fpsAccum=0;fpsFrames=0;fpsCheckAt=now+2500;
+  if(avgFrameMs>38)degradeQuality(); // sustained under ~26fps
+}
+
+function animate(){
+  const now=performance.now();
+  const dt=Math.min(.05,(now-lastT)/1000);
+  lastT=now;
+  const el=now*.001;
+  monitorPerf(now,dt);
+
+  updateSun(now,el);
+  updateStageProgression(now,dt);
+
+  const chHue=new THREE.Color(activeCK.hex);
+  const chComp=complementOf(activeCK.hex);
+  updateEnvironmentColors(chHue,chComp,chakraInfluence);
+  updateFire(chHue,el,dt);
+  updateEmbers(chHue,dt);
+  updateSmoke(el,dt);
+  updateClouds(dt);
+  updateGulls(el,dt);
+  updateFauna(el);
+  updateAmbientParticles(el,dt);
+  updateAudioListener();
+
+  // Head tracking takes over camera orientation in an active WebXR session;
+  // the manual seated drag-camera only runs outside of VR.
+  if(renderer.xr.isPresenting){
+    renderer.render(scene,cam); // XR owns the framebuffer directly; skip the 2D composite pass
+  }else{
+    updCam();
+    if(Q.composite){
+      renderer.setRenderTarget(sceneRT);
+      renderer.render(scene,cam);
+      renderer.setRenderTarget(null);
+      renderer.render(compScene,compCam);
+    }else{
+      renderer.render(scene,cam); // potato tier: skip the extra offscreen pass entirely
+    }
+  }
+}
+applyTheme(currentBiome); // initialize decor/particles/ocean for the default selection
+renderer.setAnimationLoop(animate);
+
+}catch(err){
+  document.body.innerHTML='<pre style="color:#ffb;background:#200;padding:20px;white-space:pre-wrap;font-family:monospace">'+
+    (err&&err.stack?err.stack:err)+'</pre>';
+  console.error(err);
+}
+</script>
+</body>
+</html>
